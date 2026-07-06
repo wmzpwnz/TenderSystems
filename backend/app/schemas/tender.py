@@ -63,7 +63,6 @@ class TenderResponse(TenderBase):
     is_analyzed: bool = False
     is_favorite: bool = False
     crm_status: Optional[str] = None
-    deep_analysis_result: Optional[Dict] = None
     created_at: datetime
     updated_at: datetime
     url: Optional[str] = None  # URL на zakupki.gov.ru для Live Search
@@ -128,5 +127,4 @@ class TenderFilter(BaseModel):
     prepayment_type: Optional[str] = None  # Тип авансирования
     preferences: Optional[List[str]] = None  # Преимущества (СМП/СОНКО и т.д.)
     procedure_types: Optional[List[str]] = None  # Способ отбора
-
 

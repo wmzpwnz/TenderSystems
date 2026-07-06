@@ -1,7 +1,6 @@
 import axios from 'axios'
 
 const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8003/api/v1'
-const isDevelopment = import.meta.env.DEV
 
 export const apiClient = axios.create({
   baseURL: API_URL,
@@ -19,38 +18,18 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    
-    if (isDevelopment) {
-      console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, config.data)
-    }
     return config
   },
   (error) => {
-    if (isDevelopment) {
-      console.error('[API Request Error]', error)
-    }
     return Promise.reject(error)
   }
 )
 
-// Interceptor для логирования ответов (только в development)
 apiClient.interceptors.response.use(
   (response) => {
-    if (isDevelopment) {
-      console.log(`[API Response] ${response.config.method?.toUpperCase()} ${response.config.url}`, response.status, response.data)
-    }
     return response
   },
   (error) => {
-    if (isDevelopment) {
-      console.error('[API Response Error]', {
-        url: error.config?.url,
-        method: error.config?.method,
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-      })
-    }
     return Promise.reject(error)
   }
 )
@@ -87,17 +66,6 @@ export interface Tender {
   is_analyzed: boolean
   is_favorite?: boolean
   crm_status?: string
-  deep_analysis_result?: {
-    summary?: string
-    risk_matrix?: {
-      financial: string
-      technical: string
-      legal: string
-    }
-    checklist?: Array<{ item: string; description: string; critical: boolean }>
-    red_flags?: string[]
-    error?: string
-  }
   created_at: string
   updated_at: string
   url?: string // URL для Live Search тендеров (внешняя ссылка на zakupki.gov.ru)
@@ -122,6 +90,8 @@ export interface Analysis {
   cost_breakdown: any | null
   created_at: string
 }
+
+export type AnalysisType = 'quick' | 'deep'
 
 export interface CompanyProfile {
   id: number
@@ -281,10 +251,6 @@ export const tendersApi = {
         delete filterData[key]
       }
     })
-    // Логируем отправляемые фильтры для отладки
-    if (isDevelopment) {
-      console.log('[liveSearch] Sending filters to backend:', filterData)
-    }
     // Выполняем запрос к API (кеширование отключено через React Query)
     const { data } = await apiClient.post('/search/eis-live', filterData)
     return data
@@ -292,19 +258,6 @@ export const tendersApi = {
 
   getById: async (id: number | string): Promise<Tender> => {
     const { data } = await apiClient.get(`/tenders/${id}`)
-    return data
-  },
-
-  analyze: async (id: string | number): Promise<{
-    summary: string
-    status: string
-  }> => {
-    const { data } = await apiClient.post(`/tenders/${id}/analyze`)
-    return data
-  },
-
-  deepAnalyze: async (id: string | number): Promise<any> => {
-    const { data } = await apiClient.post(`/tenders/${id}/deep-analyze`)
     return data
   },
 
@@ -377,7 +330,7 @@ export const authApi = {
 }
 
 export const analysisApi = {
-  getByTenderId: async (tenderId: number): Promise<Analysis | null> => {
+  get: async (tenderId: number | string): Promise<Analysis | null> => {
     try {
       const { data } = await apiClient.get(`/analysis/${tenderId}`)
       return data
@@ -389,13 +342,8 @@ export const analysisApi = {
     }
   },
 
-  quickAnalyze: async (tenderId: number): Promise<Analysis> => {
-    const { data } = await apiClient.post(`/analysis/quick/${tenderId}`)
-    return data
-  },
-
-  deepAnalyze: async (tenderId: number): Promise<Analysis> => {
-    const { data } = await apiClient.post(`/analysis/deep/${tenderId}`)
+  analyze: async (tenderId: number | string, type: AnalysisType): Promise<Analysis> => {
+    const { data } = await apiClient.post(`/analysis/${type}/${tenderId}`)
     return data
   },
 
@@ -424,12 +372,11 @@ export const analysisApi = {
     return data
   },
 
-  analyze: async (tenderId: number, forceReanalyze: boolean = false): Promise<any> => {
-    const { data } = await apiClient.post(`/analysis/${tenderId}`, null, {
-      params: { force_reanalyze: forceReanalyze },
-    })
-    return data
-  },
+  getByTenderId: async (tenderId: number): Promise<Analysis | null> => analysisApi.get(tenderId),
+
+  quickAnalyze: async (tenderId: number): Promise<Analysis> => analysisApi.analyze(tenderId, 'quick'),
+
+  deepAnalyze: async (tenderId: number): Promise<Analysis> => analysisApi.analyze(tenderId, 'deep'),
 }
 
 export const companyProfileApi = {
@@ -481,5 +428,3 @@ export const subscriptionsApi = {
     return data
   }
 }
-
-

@@ -8,12 +8,9 @@ from datetime import datetime
 
 from app.core.database import get_db
 from app.models.tender import Tender
-from app.models.analysis import Analysis
 from app.services.eis_client import EISClient
-from app.services.analysis_service import analysis_service
 from app.services.competitor_service import competitor_service
 from app.schemas.tender import TenderResponse, TenderListResponse, TenderCreate, TenderFilter
-from app.schemas.analysis import AnalysisResponse
 from app.models.user import User
 from app.models.user_tender import UserTender
 from app.api.deps import get_current_user, require_active_subscription
@@ -21,113 +18,6 @@ from app.api.deps import get_current_user, require_active_subscription
 router = APIRouter()
 eis_client = EISClient()
 
-
-@router.post("/{tender_id}/analyze", response_model=dict)
-async def analyze_tender(
-    tender_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_active_subscription)
-):
-    """
-    Запустить AI-анализ тендера (Краткий)
-    """
-    # ... получение данных тендера
-    tender = None
-    if tender_id.isdigit():
-        tender = db.query(Tender).filter(Tender.id == int(tender_id)).first()
-    if not tender:
-        tender = db.query(Tender).filter(Tender.eis_id == tender_id).first()
-    
-    if tender:
-        tender_data = tender.__dict__
-    else:
-        # Загружаем из ЕИС если нет в базе
-        detail_data = await eis_client.get_tender_details(tender_id)
-        tender_data = eis_client.parse_tender_data(detail_data)
-
-    if not tender_data:
-        raise HTTPException(status_code=404, detail="Тендер не найден")
-
-    # Генерируем краткий анализ
-    summary = await analysis_service.generate_summary(tender_data)
-    
-    # Если тендер в базе, помечаем как проанализированный
-    if tender:
-        tender.is_analyzed = True
-        try:
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error committing tender analysis: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
-
-    return {
-        "tender_id": tender_id,
-        "summary": summary,
-        "status": "completed"
-    }
-
-@router.post("/{tender_id}/deep-analyze", response_model=dict)
-async def deep_analyze_tender(
-    tender_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_active_subscription)
-):
-    """
-    Запустить ГЛУБОКИЙ AI-анализ тендера (с чтением документов)
-    """
-    tender = None
-    if tender_id.isdigit():
-        tender = db.query(Tender).filter(Tender.id == int(tender_id)).first()
-    if not tender:
-        tender = db.query(Tender).filter(Tender.eis_id == tender_id).first()
-    
-    if not tender:
-        # Для глубокого анализа тендер ДОЛЖЕН быть в базе (или мы его создаем)
-        detail_data = await eis_client.get_tender_details(tender_id)
-        tender_data = eis_client.parse_tender_data(detail_data)
-        tender = Tender(**tender_data)
-        db.add(tender)
-        try:
-            db.commit()
-            db.refresh(tender)
-        except Exception as e:
-            db.rollback()
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error committing new tender: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
-
-    # Получаем документы
-    if not tender.documents_data:
-        tender.documents_data = await eis_client.get_tender_documents(tender.eis_id)
-        try:
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error committing documents: {e}")
-            raise HTTPException(status_code=500, detail="Database error")
-
-    # Запускаем глубокий анализ
-    result = await analysis_service.perform_deep_analysis(tender.__dict__, tender.documents_data)
-    
-    # Сохраняем результат
-    tender.deep_analysis_result = result
-    tender.is_analyzed = True
-    try:
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"Error committing deep analysis: {e}")
-        raise HTTPException(status_code=500, detail="Database error")
-
-    return result
 
 @router.get("/customer/{inn}/intelligence", response_model=dict)
 async def get_customer_intelligence(

@@ -54,11 +54,9 @@ class Tender(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     is_analyzed = Column(Boolean, default=False)  # Проанализирован ли AI
-    deep_analysis_result = Column(JSON)  # Результаты глубокого анализа (риски, чек-листы)
     
     def __repr__(self):
         return f"<Tender {self.number}: {self.title[:50]}>"
-
 
 
 

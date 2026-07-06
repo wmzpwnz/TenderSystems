@@ -9,6 +9,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+ALLOWED_DEEPSEEK_MODELS = {"deepseek-v4-flash", "deepseek-v4-pro"}
+
 
 class DeepSeekClient:
     """Клиент для работы с DeepSeek API"""
@@ -16,7 +18,34 @@ class DeepSeekClient:
     def __init__(self):
         self.api_url = settings.DEEPSEEK_API_URL
         self.api_key = settings.DEEPSEEK_API_KEY
-        self.model = "deepseek-chat"  # Модель по умолчанию
+        self.quick_model = settings.DEEPSEEK_QUICK_MODEL
+        self.deep_model = settings.DEEPSEEK_DEEP_MODEL
+        self._validate_model(self.quick_model)
+        self._validate_model(self.deep_model)
+
+    def _validate_model(self, model: str) -> None:
+        if model not in ALLOWED_DEEPSEEK_MODELS:
+            allowed = ", ".join(sorted(ALLOWED_DEEPSEEK_MODELS))
+            raise ValueError(f"Unsupported DeepSeek model '{model}'. Allowed models: {allowed}")
+
+    def _get_model(self, analysis_type: str) -> str:
+        return self.quick_model if analysis_type == "quick" else self.deep_model
+
+    def _prepare_documents_text(self, documents_text: str, limit: int, analysis_type: str) -> str:
+        if len(documents_text) <= limit:
+            return documents_text
+
+        logger.warning(
+            "DeepSeek %s analysis documents text truncated from %s to %s characters",
+            analysis_type,
+            len(documents_text),
+            limit,
+        )
+        return (
+            documents_text[:limit]
+            + f"\n\n[ВНИМАНИЕ: текст документов обрезан до {limit} символов из {len(documents_text)}. "
+            "Анализ выполнен по части доступного текста.]"
+        )
     
     async def analyze_tender_documents(
         self,
@@ -40,6 +69,8 @@ class DeepSeekClient:
         - risks: подводные камни
         """
         
+        model = self._get_model(analysis_type)
+
         if analysis_type == "quick":
             prompt = self._build_quick_analysis_prompt(
                 tender_title,
@@ -64,7 +95,7 @@ class DeepSeekClient:
                         "Authorization": f"Bearer {self.api_key}"
                     },
                     json={
-                        "model": self.model,
+                        "model": model,
                         "messages": [
                             {
                                 "role": "system",
@@ -108,12 +139,13 @@ class DeepSeekClient:
         documents_text: str
     ) -> str:
         """Промпт для поверхностного анализа (расширенный быстрый обзор)"""
+        prepared_documents_text = self._prepare_documents_text(documents_text, 12000, "quick")
         return f"""
 Проведи ПОВЕРХНОСТНЫЙ анализ тендера. Извлеки МАКСИМУМ информации из предоставленных документов.
 
 НАИМЕНОВАНИЕ: {title}
 ОПИСАНИЕ: {description}
-ДОКУМЕНТЫ: {documents_text[:12000]}
+ДОКУМЕНТЫ: {prepared_documents_text}
 
 ВАЖНО: Внимательно изучи ВСЕ документы и извлеки ВСЕ доступные данные. Не пиши "нужно проверить", если информация есть в документах!
 
@@ -162,12 +194,13 @@ class DeepSeekClient:
         documents_text: str
     ) -> str:
         """Промпт для глубокого анализа (полный разбор)"""
+        prepared_documents_text = self._prepare_documents_text(documents_text, 15000, "deep")
         return f"""
 Проведи ГЛУБОКИЙ анализ тендера. Проанализируй ВСЕ аспекты для принятия решения об участии.
 
 НАИМЕНОВАНИЕ: {title}
 ОПИСАНИЕ: {description}
-ДОКУМЕНТЫ: {documents_text[:15000]}
+ДОКУМЕНТЫ: {prepared_documents_text}
 
 Верни ТОЛЬКО JSON:
 {{
@@ -324,5 +357,3 @@ class DeepSeekClient:
                 score += 15
         
         return min(score, 100.0)
-
-

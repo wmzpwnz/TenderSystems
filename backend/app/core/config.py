@@ -25,6 +25,8 @@ class Settings(BaseSettings):
         "DEEPSEEK_API_URL",
         "https://api.deepseek.com/v1/chat/completions"
     )
+    DEEPSEEK_QUICK_MODEL: str = os.getenv("DEEPSEEK_QUICK_MODEL", "deepseek-v4-flash")
+    DEEPSEEK_DEEP_MODEL: str = os.getenv("DEEPSEEK_DEEP_MODEL", "deepseek-v4-pro")
     
     # ЕИС API
     EIS_API_KEY: str = os.getenv("EIS_API_KEY", "")
@@ -91,4 +93,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

@@ -8,23 +8,15 @@ import {
     MapPin,
     ShieldCheck,
     Sparkles,
-    TrendingUp,
     DollarSign,
     Target,
-    Zap,
     BarChart3,
-    Bell,
-    AlertCircle,
     CheckCircle2,
-    Info,
     ChevronRight,
     Building2,
     Calendar,
     FileText,
-    Shield,
     Briefcase,
-    FileCheck,
-    HelpCircle,
     Heart,
     Trophy,
     XCircle,
@@ -33,7 +25,7 @@ import {
     AlertTriangle
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { tendersApi, analysisApi, crmApi } from '../api/client'
+import { tendersApi, analysisApi, crmApi, type Analysis } from '../api/client'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -47,6 +39,48 @@ const CRM_STATUSES = [
     { value: 'won', label: 'Победа', icon: Trophy },
     { value: 'lost', label: 'Проигрыш', icon: XCircle },
 ]
+
+const AI_ESTIMATE_NOTICE = 'AI-оценка, требует проверки'
+
+const RISK_GROUPS = [
+    { key: 'critical_risks', label: 'Критические риски' },
+    { key: 'financial_risks', label: 'Финансовые риски' },
+    { key: 'operational_risks', label: 'Операционные риски' },
+    { key: 'legal_risks', label: 'Юридические риски' },
+    { key: 'hidden_requirements', label: 'Скрытые требования' },
+]
+
+const toText = (value: unknown): string => {
+    if (value === null || value === undefined || value === '') return 'Не указано'
+    if (Array.isArray(value)) return value.map(toText).join(', ')
+    if (typeof value === 'object') return JSON.stringify(value)
+    return String(value)
+}
+
+const toList = (value: unknown): string[] => {
+    if (!value) return []
+    if (Array.isArray(value)) return value.map(toText).filter(Boolean)
+    if (typeof value === 'object') {
+        return Object.entries(value as Record<string, unknown>).map(([key, val]) => `${key}: ${toText(val)}`)
+    }
+    return [String(value)]
+}
+
+const hasEntries = (value: unknown): value is Record<string, unknown> => {
+    return !!value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length > 0
+}
+
+const getAnalysisFinancial = (analysis: Analysis | null | undefined) => {
+    return analysis?.raw_ai_response?.financial_analysis || analysis?.financial_info || null
+}
+
+const getConstructionAnalysis = (analysis: Analysis | null | undefined) => {
+    return analysis?.raw_ai_response?.for_construction || null
+}
+
+const getFinalAssessment = (analysis: Analysis | null | undefined) => {
+    return analysis?.raw_ai_response?.final_assessment || null
+}
 
 export default function TenderDetail() {
     const { id } = useParams<{ id: string }>()
@@ -64,21 +98,29 @@ export default function TenderDetail() {
 
     const queryClient = useQueryClient()
 
+    const { data: analysis, isLoading: isAnalysisLoading } = useQuery({
+        queryKey: ['analysis', id],
+        queryFn: () => analysisApi.get(id!),
+        enabled: !!id,
+    })
+
     // Мутация для запуска анализа (Краткий)
     const analyzeMutation = useMutation({
-        mutationFn: () => tendersApi.analyze(id!),
+        mutationFn: () => analysisApi.analyze(id!, 'quick'),
         onSuccess: () => {
             setActiveTab('analysis')
             queryClient.invalidateQueries({ queryKey: ['tender', id] })
+            queryClient.invalidateQueries({ queryKey: ['analysis', id] })
         }
     })
 
     // Мутация для ГЛУБОКОГО анализа
     const deepAnalyzeMutation = useMutation({
-        mutationFn: () => tendersApi.deepAnalyze(id!),
+        mutationFn: () => analysisApi.analyze(id!, 'deep'),
         onSuccess: () => {
             setActiveTab('analysis')
             queryClient.invalidateQueries({ queryKey: ['tender', id] })
+            queryClient.invalidateQueries({ queryKey: ['analysis', id] })
         }
     })
 
@@ -157,6 +199,12 @@ export default function TenderDetail() {
     };
 
     const urgency = getUrgency(tender.application_deadline);
+    const currentAnalysis = deepAnalyzeMutation.data || analyzeMutation.data || analysis || null
+    const financialAnalysis = getAnalysisFinancial(currentAnalysis)
+    const constructionAnalysis = getConstructionAnalysis(currentAnalysis)
+    const finalAssessment = getFinalAssessment(currentAnalysis)
+    const hasAnalysis = !!currentAnalysis
+    const isAnalyzing = analyzeMutation.isPending || deepAnalyzeMutation.isPending
 
     return (
         <div className="blueprint-page">
@@ -525,7 +573,7 @@ export default function TenderDetail() {
                                         exit={{ opacity: 0, x: -10 }}
                                         className="space-y-6"
                                     >
-                                        {!tender.is_analyzed && !analyzeMutation.isPending && !deepAnalyzeMutation.isPending ? (
+                                        {!hasAnalysis && !isAnalyzing && !isAnalysisLoading ? (
                                             <div className="blueprint-section py-12 text-center px-8">
                                                 <div className="blueprint-icon-tile blueprint-pulse-glow h-20 w-20 inline-flex mb-6">
                                                     <Sparkles className="h-10 w-10" />
@@ -554,7 +602,7 @@ export default function TenderDetail() {
                                         ) : (
                                             <div className="space-y-8">
                                                 {/* Загрузка */}
-                                                {(analyzeMutation.isPending || deepAnalyzeMutation.isPending) && (
+                                                {(isAnalyzing || isAnalysisLoading) && (
                                                     <div className="blueprint-card py-20 text-center border-dashed relative overflow-hidden">
                                                         <motion.div
                                                             className="absolute inset-0 bg-gradient-to-r from-transparent via-[rgba(182,217,252,.08)] to-transparent -skew-x-12"
@@ -570,126 +618,251 @@ export default function TenderDetail() {
                                                         <p className="text-[var(--color-glacier)] font-bold relative z-10">
                                                             {deepAnalyzeMutation.isPending ? "Скачиваю и анализирую документацию..." : "Генерирую резюме..."}
                                                         </p>
-                                                        <p className="text-sm text-[var(--color-fog)] mt-1 relative z-10">Это может занять до 30 секунд</p>
+                                                        <p className="text-sm text-[var(--color-fog)] mt-1 relative z-10">Это может занять до нескольких минут</p>
                                                     </div>
                                                 )}
 
-                                                {/* Результаты краткого анализа */}
-                                                {(analyzeMutation.data || (tender.is_analyzed && !tender.deep_analysis_result)) && !deepAnalyzeMutation.isPending && (
-                                                    <motion.div
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
-                                                        className="blueprint-panel p-8 relative"
-                                                    >
-                                                        <div className="prose prose-blue max-w-none prose-sm md:prose-base">
-                                                            <ReactMarkdown>{analyzeMutation.data?.summary || tender.description || "Резюме формируется..."}</ReactMarkdown>
-                                                        </div>
-                                                        <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-                                                            <div className="flex items-center gap-2">
+                                                {currentAnalysis && !isAnalyzing && (
+                                                    <div className="space-y-8">
+                                                        <motion.div
+                                                            initial={{ opacity: 0 }}
+                                                            animate={{ opacity: 1 }}
+                                                            className="blueprint-panel p-8 relative"
+                                                        >
+                                                            <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                                                                <div>
+                                                                    <p className="blueprint-eyebrow text-[10px] mb-1">
+                                                                        {currentAnalysis.analysis_type === 'deep' ? 'Глубокий AI-анализ' : 'Краткий AI-анализ'}
+                                                                    </p>
+                                                                    <h3 className="font-bold text-[var(--color-glacier)]">Результаты анализа</h3>
+                                                                </div>
+                                                                {currentAnalysis.created_at && (
+                                                                    <span className="blueprint-status text-[10px] font-black px-2 py-1">
+                                                                        {format(new Date(currentAnalysis.created_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="prose prose-blue max-w-none prose-sm md:prose-base">
+                                                                <ReactMarkdown>{currentAnalysis.summary || tender.description || "Резюме формируется..."}</ReactMarkdown>
+                                                            </div>
+                                                            <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
                                                                 <button
                                                                     onClick={() => analyzeMutation.mutate()}
                                                                     className="blueprint-eyebrow text-[10px] hover:text-[var(--color-frost-link)]"
                                                                 >
-                                                                    Обновить резюме
+                                                                    Обновить краткий анализ
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => deepAnalyzeMutation.mutate()}
+                                                                    className="blueprint-button-primary text-sm px-4 py-2 flex items-center gap-2"
+                                                                >
+                                                                    <ShieldCheck className="h-4 w-4" /> Запустить глубокий аудит
                                                                 </button>
                                                             </div>
-                                                            <button
-                                                                onClick={() => deepAnalyzeMutation.mutate()}
-                                                                className="blueprint-button-primary text-sm px-4 py-2 flex items-center gap-2"
-                                                            >
-                                                                <ShieldCheck className="h-4 w-4" /> Перейти к глубокому аудиту
-                                                            </button>
-                                                        </div>
-                                                    </motion.div>
-                                                )}
+                                                        </motion.div>
 
-                                                {/* Результаты ГЛУБОКОГО анализа */}
-                                                {(tender.deep_analysis_result || deepAnalyzeMutation.data) && (
-                                                    <div className="space-y-8">
-                                                        {/* Error handling if LLM failed to parse */}
-                                                        {(tender.deep_analysis_result?.error || deepAnalyzeMutation.data?.error) && (
-                                                            <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3">
-                                                                <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                                                        {currentAnalysis.raw_ai_response?.error && (
+                                                            <div className="blueprint-danger p-4 flex items-start gap-3">
+                                                                <AlertTriangle className="h-5 w-5 flex-shrink-0" />
                                                                 <div>
-                                                                    <p className="text-sm font-bold text-amber-900">Неполный анализ</p>
-                                                                    <p className="text-xs text-amber-700">{(tender.deep_analysis_result?.error || deepAnalyzeMutation.data?.error)}</p>
+                                                                    <p className="text-sm font-bold">Неполный анализ</p>
+                                                                    <p className="text-xs">{currentAnalysis.raw_ai_response.error}</p>
                                                                 </div>
                                                             </div>
                                                         )}
 
-                                                        {/* Матрица Рисков */}
                                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                                            {Object.entries((tender.deep_analysis_result || deepAnalyzeMutation.data).risk_matrix || {}).map(([key, val]: [string, any]) => (
-                                                                <div key={key} className="blueprint-panel p-6 transition-shadow">
-                                                                    <p className="blueprint-eyebrow text-[10px] mb-1">
-                                                                        {key === 'financial' ? 'Финансовый риск' : key === 'technical' ? 'Технический риск' : key === 'legal' ? 'Юридический риск' : key}
-                                                                    </p>
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <div className={clsx(
-                                                                            "h-2 w-2 rounded-full",
-                                                                            String(val).toLowerCase().includes('высокий') ? "bg-[var(--color-ember)] animate-pulse" :
-                                                                                String(val).toLowerCase().includes('средний') ? "bg-[#d8a14d]" : "bg-[var(--color-cipher-mint)]"
-                                                                        )} />
-                                                                        <p className="font-black text-[var(--color-glacier)]">
-                                                                            {String(val).split(' ')[0]}
-                                                                        </p>
-                                                                    </div>
-                                                                    <p className="text-xs text-[var(--color-fog)] leading-relaxed">
-                                                                        {String(val).split(' ').slice(1).join(' ')}
+                                                            <div className="blueprint-panel p-6">
+                                                                <p className="blueprint-eyebrow text-[10px] mb-1">Уровень риска</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className={clsx(
+                                                                        "h-2 w-2 rounded-full",
+                                                                        String(currentAnalysis.risk_level || currentAnalysis.risks?.level).toLowerCase().includes('high') ? "bg-[var(--color-ember)] animate-pulse" :
+                                                                            String(currentAnalysis.risk_level || currentAnalysis.risks?.level).toLowerCase().includes('medium') ? "bg-[var(--color-premium-gold)]" : "bg-[var(--color-cipher-mint)]"
+                                                                    )} />
+                                                                    <p className="font-black text-[var(--color-glacier)]">
+                                                                        {currentAnalysis.risk_level || currentAnalysis.risks?.level || 'medium'}
                                                                     </p>
                                                                 </div>
-                                                            ))}
-                                                        </div>
-
-                                                        {/* Чек-лист требований */}
-                                                        <div className="blueprint-panel overflow-hidden">
-                                                            <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
-                                                                <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
-                                                                    <Target className="h-4 w-4 text-[var(--color-frost-link)]" />
-                                                                    Compliance Checklist
-                                                                </h4>
-                                                                <span className="blueprint-status text-[10px] font-black px-2 py-1">
-                                                                    AI Extracted
-                                                                </span>
                                                             </div>
-                                                            <div className="divide-y divide-[rgba(186,215,247,.12)] px-6">
-                                                                {(tender.deep_analysis_result || deepAnalyzeMutation.data).checklist?.map((item: any, i: number) => (
-                                                                    <div key={i} className="py-4 flex gap-4 items-start hover:bg-[rgba(216,236,248,.04)] transition-colors">
-                                                                        <div className={clsx(
-                                                                            "mt-1 p-1 rounded-[var(--radius-badges)] flex-shrink-0",
-                                                                            item.critical ? "blueprint-danger" : "blueprint-success"
-                                                                        )}>
-                                                                            <ShieldCheck className="h-4 w-4" />
-                                                                        </div>
-                                                                        <div>
-                                                                            <p className="font-bold text-[var(--color-glacier)] text-sm">{item.item}</p>
-                                                                            <p className="text-xs text-[var(--color-fog)] mt-1">{item.description}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
+                                                            <div className="blueprint-panel p-6">
+                                                                <p className="blueprint-eyebrow text-[10px] mb-1">Вероятность победы</p>
+                                                                <p className="font-black text-[var(--color-glacier)]">{currentAnalysis.win_probability ?? 'Не рассчитано'}%</p>
+                                                                <p className="text-[10px] text-[var(--color-fog)] mt-2">{AI_ESTIMATE_NOTICE}</p>
+                                                            </div>
+                                                            <div className="blueprint-panel p-6">
+                                                                <p className="blueprint-eyebrow text-[10px] mb-1">Тип анализа</p>
+                                                                <p className="font-black text-[var(--color-glacier)]">{currentAnalysis.analysis_type}</p>
                                                             </div>
                                                         </div>
 
-                                                        {/* Red Flags */}
-                                                        {(tender.deep_analysis_result || deepAnalyzeMutation.data).red_flags?.length > 0 && (
-                                                            <div className="blueprint-danger p-6">
-                                                                <div className="flex items-center justify-between mb-4">
-                                                                    <h4 className="font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                                                                        <AlertTriangle className="h-4 w-4" />
-                                                                        Критические моменты (Red Flags)
+                                                        {currentAnalysis.risks && (
+                                                            <div className="blueprint-panel overflow-hidden">
+                                                                <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
+                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                        <AlertTriangle className="h-4 w-4 text-[var(--color-ember)]" />
+                                                                        Риски
                                                                     </h4>
-                                                                    <span className="blueprint-status px-2 py-0.5 text-[9px] font-black text-[#ff9b83]">ВНИМАНИЕ</span>
+                                                                    <span className="blueprint-status text-[10px] font-black px-2 py-1">Analysis.risks</span>
                                                                 </div>
-                                                                <ul className="space-y-3">
-                                                                    {(tender.deep_analysis_result || deepAnalyzeMutation.data).red_flags.map((flag: string, i: number) => (
-                                                                        <li key={i} className="flex gap-3 text-sm font-medium">
-                                                                            <span>•</span>
-                                                                            {flag}
-                                                                        </li>
+                                                                <div className="divide-y divide-[rgba(186,215,247,.12)] px-6">
+                                                                    {RISK_GROUPS.flatMap((group) =>
+                                                                        toList(currentAnalysis.risks?.[group.key]).map((item, i) => (
+                                                                            <div key={`${group.key}-${i}`} className="py-4 flex gap-4 items-start">
+                                                                                <div className="mt-1 p-1 rounded-[var(--radius-badges)] blueprint-danger flex-shrink-0">
+                                                                                    <AlertTriangle className="h-4 w-4" />
+                                                                                </div>
+                                                                                <div>
+                                                                                    <p className="font-bold text-[var(--color-glacier)] text-sm">{group.label}</p>
+                                                                                    <p className="text-xs text-[var(--color-fog)] mt-1">{item}</p>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))
+                                                                    )}
+                                                                    {toList(currentAnalysis.risks?.recommendations).map((item, i) => (
+                                                                        <div key={`risk-recommendation-${i}`} className="py-4 flex gap-4 items-start">
+                                                                            <div className="mt-1 p-1 rounded-[var(--radius-badges)] blueprint-success flex-shrink-0">
+                                                                                <ShieldCheck className="h-4 w-4" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="font-bold text-[var(--color-glacier)] text-sm">Рекомендация</p>
+                                                                                <p className="text-xs text-[var(--color-fog)] mt-1">{item}</p>
+                                                                            </div>
+                                                                        </div>
                                                                     ))}
-                                                                </ul>
+                                                                </div>
                                                             </div>
                                                         )}
+
+                                                        {hasEntries(currentAnalysis.critical_requirements) && (
+                                                            <div className="blueprint-panel overflow-hidden">
+                                                                <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
+                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                        <Target className="h-4 w-4 text-[var(--color-frost-link)]" />
+                                                                        Требования к участнику
+                                                                    </h4>
+                                                                    <span className="blueprint-status text-[10px] font-black px-2 py-1">AI Extracted</span>
+                                                                </div>
+                                                                <div className="divide-y divide-[rgba(186,215,247,.12)] px-6">
+                                                                    {Object.entries(currentAnalysis.critical_requirements).map(([key, value]) => (
+                                                                        <div key={key} className="py-4">
+                                                                            <p className="font-bold text-[var(--color-glacier)] text-sm">{key}</p>
+                                                                            <p className="text-xs text-[var(--color-fog)] mt-1">{toText(value)}</p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {hasEntries(financialAnalysis) && (
+                                                            <div className="blueprint-panel overflow-hidden">
+                                                                <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
+                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                        <DollarSign className="h-4 w-4 text-[var(--color-cipher-mint)]" />
+                                                                        Финансовый анализ
+                                                                    </h4>
+                                                                    <span className="blueprint-status text-[10px] font-black px-2 py-1">{AI_ESTIMATE_NOTICE}</span>
+                                                                </div>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
+                                                                    {Object.entries(financialAnalysis).map(([key, value]) => (
+                                                                        <div key={key} className="blueprint-panel p-4">
+                                                                            <p className="blueprint-eyebrow text-[10px] mb-1">{key}</p>
+                                                                            <p className="text-sm text-[var(--color-glacier)]">{toText(value)}</p>
+                                                                            {['estimated_cost', 'potential_margin', 'break_even_price', 'market_comparison'].includes(key) && (
+                                                                                <p className="text-[10px] text-[var(--color-fog)] mt-2">{AI_ESTIMATE_NOTICE}</p>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {hasEntries(constructionAnalysis) && (
+                                                            <div className="blueprint-panel overflow-hidden">
+                                                                <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
+                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                        <Building2 className="h-4 w-4 text-[var(--color-frost-link)]" />
+                                                                        Строительный блок
+                                                                    </h4>
+                                                                    <span className="blueprint-status text-[10px] font-black px-2 py-1">for_construction</span>
+                                                                </div>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6">
+                                                                    {Object.entries(constructionAnalysis).map(([key, value]) => (
+                                                                        <div key={key} className="blueprint-panel p-4">
+                                                                            <p className="blueprint-eyebrow text-[10px] mb-1">{key}</p>
+                                                                            <p className="text-sm text-[var(--color-glacier)]">{toText(value)}</p>
+                                                                            {['estimate_analysis', 'price_per_unit'].includes(key) && (
+                                                                                <p className="text-[10px] text-[var(--color-fog)] mt-2">{AI_ESTIMATE_NOTICE}</p>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {hasEntries(currentAnalysis.margin_analysis) && (
+                                                            <div className="blueprint-panel p-6">
+                                                                <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                    <BarChart3 className="h-4 w-4 text-[var(--color-frost-link)]" />
+                                                                    Маржинальность
+                                                                </h4>
+                                                                <p className="text-[10px] text-[var(--color-fog)] mt-2">{AI_ESTIMATE_NOTICE}</p>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                                                                    {Object.entries(currentAnalysis.margin_analysis).map(([key, value]) => (
+                                                                        <div key={key} className="blueprint-panel p-4">
+                                                                            <p className="blueprint-eyebrow text-[10px] mb-1">{key}</p>
+                                                                            <p className="text-sm text-[var(--color-glacier)]">{toText(value)}</p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {hasEntries(finalAssessment) && (
+                                                            <div className="blueprint-panel overflow-hidden">
+                                                                <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
+                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                        <Trophy className="h-4 w-4 text-[var(--color-premium-gold)]" />
+                                                                        Итоговая оценка
+                                                                    </h4>
+                                                                    <span className="blueprint-status text-[10px] font-black px-2 py-1">{AI_ESTIMATE_NOTICE}</span>
+                                                                </div>
+                                                                <div className="divide-y divide-[rgba(186,215,247,.12)] px-6">
+                                                                    {Object.entries(finalAssessment).map(([key, value]) => (
+                                                                        <div key={key} className="py-4">
+                                                                            <p className="font-bold text-[var(--color-glacier)] text-sm">{key}</p>
+                                                                            <p className="text-xs text-[var(--color-fog)] mt-1">{toText(value)}</p>
+                                                                            {['win_probability', 'recommended_price', 'profitability'].includes(key) && (
+                                                                                <p className="text-[10px] text-[var(--color-fog)] mt-2">{AI_ESTIMATE_NOTICE}</p>
+                                                                            )}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
+
+                                                        {currentAnalysis.documents_analyzed?.length ? (
+                                                            <div className="blueprint-panel overflow-hidden">
+                                                                <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
+                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                        <FileText className="h-4 w-4 text-[var(--color-frost-link)]" />
+                                                                        Проанализированные документы
+                                                                    </h4>
+                                                                    <span className="blueprint-status text-[10px] font-black px-2 py-1">{currentAnalysis.documents_analyzed.length}</span>
+                                                                </div>
+                                                                <div className="divide-y divide-[rgba(186,215,247,.12)] px-6">
+                                                                    {currentAnalysis.documents_analyzed.map((doc: any, i: number) => (
+                                                                        <div key={i} className="py-4">
+                                                                            <p className="font-bold text-[var(--color-glacier)] text-sm">{doc.filename || `Документ ${i + 1}`}</p>
+                                                                            <p className="text-xs text-[var(--color-fog)] mt-1">
+                                                                                {doc.has_text === false ? 'Текст не извлечен' : `Извлечено символов: ${doc.text_length || 0}`}
+                                                                            </p>
+                                                                            {doc.error && <p className="text-xs text-[var(--color-ember-bright-soft)] mt-1">{doc.error}</p>}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ) : null}
 
                                                         <div className="flex flex-wrap justify-center items-center gap-4 pt-4">
                                                             <button
