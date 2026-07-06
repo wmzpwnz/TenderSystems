@@ -176,7 +176,7 @@ export default function SearchFilters({
               <button
                 type="button"
                 onClick={handleReset}
-                className="ml-auto text-sm text-[var(--color-fog)] hover:text-[#ff9b83] flex items-center gap-1"
+                className="ml-auto text-sm text-[var(--color-fog)] hover:text-[var(--color-ember-bright)] flex items-center gap-1"
               >
                 <X className="h-3 w-3" /> Сбросить все
               </button>

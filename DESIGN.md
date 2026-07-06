@@ -1,190 +1,142 @@
-# AdvaCodex Design System
+# Тендерный Хакер — Design System
 
-> blueprint on midnight glass
+Тёмный технический интерфейс для оперативного мониторинга и анализа тендеров.
 
-## Theme
+## Источник Правды
 
-Dark, technical, matte UI on a single Midnight Ink canvas. The interface is inspired by AuthKit's dark login-box composition, but adapted for an operational tender-monitoring product.
+- Дизайн-контракт: этот файл.
+- Реальная реализация токенов и shared CSS: `/frontend/src/index.css`.
+- Shared UI primitives: `/frontend/src/components/ui/`.
 
-The system uses cool blue-gray typography, thin inset strokes, restrained luminous accents, and blueprint grid depth. Saturated fills are reserved for one dominant action per view. Auth screens may use pill-shaped controls to match the AuthKit reference; product screens stay denser and more utilitarian.
+Если нужного цвета, шрифта, радиуса или компонента нет, сначала добавить его сюда и в shared-реализацию, потом использовать в страницах.
 
-## Tokens
+## Тема
 
-### Colors
+Тёмная матовая UI на едином фоне `Midnight Ink`. Стиль операторский: холодная сине-серая типографика, тонкие внутренние обводки, сдержанные светящиеся акценты, blueprint-сетка на фоне. Насыщенная заливка разрешена только для одного главного действия на экране.
 
-| Token | Value | Usage |
+Формы авторизации могут использовать pill controls. Продуктовые экраны должны оставаться плотными и утилитарными.
+
+## Цвета
+
+| Токен | Значение | Назначение |
 | --- | --- | --- |
-| `--color-midnight-ink` | `#05060f` | App canvas and page background |
-| `--color-graphite-plate` | `#2f343e` | Cards, modals, panels |
-| `--color-steel-border` | `#3f4959` | Inputs, dividers, structural lines |
-| `--color-fog` | `#81899b` | Muted helper text and metadata |
-| `--color-pebble` | `#9da7ba` | Secondary body text |
-| `--color-moonlight` | `#c7d3ea` | Default body and icon color |
-| `--color-ice` | `#d1e4fa` | Strong secondary labels and badges |
-| `--color-glacier` | `#d8ecf8` | Headings and high-priority text |
-| `--color-frost-link` | `#b6d9fc` | Links and active text accents |
-| `--color-electric-iris` | `#663af3` | Primary CTA fill only |
-| `--color-ember` | `#e46d4c` | Warning/urgent accent |
-| `--color-azure` | `#027dea` | Low-frequency blue accent |
-| `--color-cipher-mint` | `#269684` | Success accent |
+| `--color-midnight-ink` | `#05060f` | Фон приложения и страниц |
+| `--color-graphite-plate` | `#2f343e` | Карточки, модалки, панели |
+| `--color-steel-border` | `#3f4959` | Поля ввода, разделители, структурные линии |
+| `--color-fog` | `#81899b` | Приглушённый текст, метаданные |
+| `--color-pebble` | `#9da7ba` | Второстепенный текст |
+| `--color-moonlight` | `#c7d3ea` | Основной текст и иконки |
+| `--color-ice` | `#d1e4fa` | Вторичные подписи, бейджи |
+| `--color-glacier` | `#d8ecf8` | Заголовки, важный текст |
+| `--color-frost-link` | `#b6d9fc` | Ссылки, активные акценты |
+| `--color-electric-iris` | `#663af3` | Основной CTA |
+| `--color-ember` | `#e46d4c` | Предупреждение/срочность |
+| `--color-azure` | `#027dea` | Второстепенный синий акцент |
+| `--color-cipher-mint` | `#269684` | Успех |
+| `--color-blueprint-glow` | `#bacff7` | Свечение blueprint-фона |
+| `--color-ember-bright` | `#ff9b83` | Ошибки, критическая срочность, active favorite |
+| `--color-ember-bright-soft` | `#ffb39f` | Мягкий warning/error текст |
+| `--color-premium-gold` | `#d8a14d` | Средний риск / premium-like акцент; использовать редко |
 
-### Typography
+Raw hex в TSX запрещён для новых изменений. Использовать `var(--color-*)`.
 
-- UI/body: `--font-untitled-sans`, substitute Inter/system sans.
-- Display headings: `--font-aeonikpro`, substitute system sans.
-- Eyebrows/structural labels: `--font-dotdigital`, substitute JetBrains Mono/system mono.
-- Body: 14-16px, line-height 1.43-1.5.
-- Section headings: 28-48px, line-height 1.14-1.2.
-- Eyebrows: 15px, uppercase, tabular, `0.1em` tracking.
+## Типографика
 
-### Shape
+В `index.css` сейчас заданы:
 
-- Cards: `10-16px`.
-- Modals/large panels: `16px`.
-- Badges/chips: `6px`.
-- Inputs/buttons: `2px`.
-- Pills: `999px`, primarily for auth screens, chips, and status pills.
+- `--font-untitled-sans`
+- `--font-aeonikpro`
+- `--font-dotdigital`
 
-### Elevation
+Но кастомные шрифты физически не подключены через `@font-face` или CDN. До отдельного решения считать рабочим стандартом fallback:
 
-- Do not use traditional colored drop shadows.
-- Use inset hairlines and cool inner glows:
-  - `--shadow-subtle`: `rgba(186, 215, 247, 0.12) 0 0 0 1px inset`
-  - `--shadow-subtle-4`: card stack with inset top line, inner glow, near-black ambient shadow
-  - `--shadow-sm`: small blue glow for icon highlights
+- UI/body: `Inter, ui-sans-serif, system-ui, sans-serif`
+- Mono/eyebrows: `'JetBrains Mono', ui-monospace, monospace`
+- Body: `14-16px`, line-height `1.43-1.5`
+- Section headings: `28-48px`, line-height `1.14-1.2`
+- Eyebrows: uppercase, tabular, `0.1em` tracking
 
-### Motion And Glow
+Auth production typography:
 
-- Motion must be quiet and functional: 160-240ms hover/focus transitions with `cubic-bezier(0.16, 1, 0.3, 1)`.
-- Page canvas carries a slow ambient radial glow, not moving decorative shapes.
-- Section and modal frames use a slow conic glow pulse at the top edge.
-- Cards and nested panels lift by `1px` on hover and switch from hairline-only elevation to `--shadow-subtle-6`.
-- Icon tiles may glow with `--shadow-sm` on hover.
-- Primary buttons stay mostly flat; hover may lift by `1px`, but must not use heavy shadows.
-- Respect `prefers-reduced-motion: reduce`.
+| Элемент | Значение |
+| --- | --- |
+| Eyebrow | `18px`, uppercase, `0.24em`, mono stack |
+| Title | `clamp(30px, 4vw, 40px)`, weight `500`, line-height `1.12` |
+| Subtitle | `19px`, line-height `1.4` |
+| Label | `17px`, weight `500` |
+| Input | `18px` desktop, `16px` mobile |
+| Submit | `20px` desktop, `16px` mobile |
 
-## Components
+## Форма
 
-### Page
+| Элемент | Значение |
+| --- | --- |
+| Product inputs/buttons | `2px` |
+| Badges/chips | `6px` |
+| Cards/panels | `10-16px` |
+| Modals/large panels | `16px` |
+| Auth cards desktop | `28px` |
+| Auth cards mobile | `22px` |
+| Pills/auth controls | `999px` |
 
-Use `.blueprint-page`: full-viewport Midnight Ink background with a faint 40px blueprint grid and radial top glow.
+## Elevation
 
-Canvas behavior:
+- Без классических цветных теней.
+- Использовать внутренние hairline-обводки и холодные inner glow.
+- Основные токены: `--shadow-subtle`, `--shadow-subtle-4`, `--shadow-subtle-6`, `--shadow-sm`.
 
-- Background color remains `#05060f`.
-- Grid remains subtle and structural; it must not overpower the content.
-- Ambient radial glow sits near the top center.
-- Do not add decorative blobs, large colorful gradients, or bright image backgrounds.
+## Motion
 
-### Card / Section
+- Hover/focus: `160-240ms`, `cubic-bezier(0.16, 1, 0.3, 1)`.
+- Фон страницы: медленное фоновое радиальное свечение.
+- Рамки секций/модалок: медленный conic glow по верхней грани.
+- Обязательно уважать `prefers-reduced-motion: reduce`.
 
-Use `.blueprint-section` for primary page blocks and `.blueprint-panel` for nested groups. Surfaces are matte Graphite Plate or translucent Moonlight overlays, never bright color blocks.
+## Shared CSS Classes
 
-These surfaces include subtle animated conic/radial glow overlays. Do not add additional decorative blobs or large moving gradients.
+- `.blueprint-page` — full-page app surface.
+- `.blueprint-section` — primary page block.
+- `.blueprint-panel` — nested group.
+- `.blueprint-card` — repeated content card.
+- `.blueprint-modal` — modal container.
+- `.blueprint-input` — product input.
+- `.blueprint-button-primary` — strongest action.
+- `.blueprint-button-ghost` — secondary action.
+- `.blueprint-pill` — pill nav/status.
+- `.blueprint-status` — compact status row.
+- `.blueprint-success` / `.blueprint-danger` — success/error panels.
 
-### Buttons
+## Auth Components
 
-Use `.blueprint-button-primary` for the single strongest action in a view. Use `.blueprint-button-ghost` for secondary actions. Buttons keep `2px` radius.
+Auth pages must use React primitives from `/frontend/src/components/ui/Auth.tsx`.
 
-### Inputs
+Required structure:
 
-Use `.blueprint-input`: dark fill, Steel Border, `2px` radius, Frost Link focus ring.
+- `AuthPage` -> `.blueprint-page.authkit-stage`
+- `AuthCard` -> `.authkit-main-card`
+- `AuthHeader` -> `.authkit-logo-mark`, `.authkit-eyebrow`, `.authkit-title`, `.authkit-subtitle`
+- `AuthInput` -> `.authkit-label`, `.authkit-input`, `.authkit-input-icon`
+- `AuthSubmit` -> `.authkit-submit`
+- `AuthMessage` -> `.blueprint-success` / `.blueprint-danger`
+- `AuthDivider` -> `.authkit-divider`
+- `AuthTrustRow` -> `.authkit-trust-row`
 
-### Labels
+Auth copy:
 
-Use `.blueprint-eyebrow` for structural labels and `.blueprint-heading` for headings.
+- Login title: `Вход в TenderSystems`
+- Register title: `Регистрация в TenderSystems`
 
-### Modals
+## Responsive Rules
 
-Use `.blueprint-modal` with the same Graphite Plate surface, hairline border, and card elevation. Modal footers use translucent Midnight Ink bands.
+- Проверять mobile width `375px`.
+- Auth cards должны сохранять минимум `16px` horizontal viewport padding.
+- При `<520px`: auth card radius `22px`, input/button height `56px`.
+- Бизнес-экраны должны оставаться плотными; не превращать app shell в marketing landing.
 
-### Auth Screens
+## Правила Использования
 
-Login and registration screens use the AuthKit-inspired composition.
-
-#### Composition
-
-- Root: `.blueprint-page.authkit-stage`.
-- Scene wrapper: `.authkit-stack`, centered in the viewport.
-- Primary form card: `.authkit-main-card`.
-- Corner light points: `.authkit-card-dot` with `.authkit-dot-tl`, `.authkit-dot-tr`, `.authkit-dot-bl`, `.authkit-dot-br`.
-
-The goal is a clean AuthKit-like login box, adapted for AdvaCodex:
-
-- A central active login card.
-- No secondary side cards or fake background forms.
-- Thin glass borders, inset highlights, and a restrained blueprint canvas.
-- The center card must feel smaller and sharper than a full-page modal, not like a large generic panel.
-
-#### Auth Card
-
-- Desktop width: about `620px`.
-- Tablet/narrow width: about `540px`.
-- Border radius: about `28px` desktop, `22px` mobile.
-- Surface: dark translucent glass over Midnight Ink, with subtle top radial glow.
-- Shadow: inner blue-gray hairlines plus deep black ambient shadow.
-- Logo mark: small square glass tile, not a large hero icon.
-- Title size: about `30-40px`, medium weight.
-- Avoid oversized Russian headings that fill the card width.
-
-#### Auth Controls
-
-- Inputs use `.authkit-input`.
-- Auth submit uses `.authkit-submit`.
-- Auth inputs and submit are pill-shaped: `999px`.
-- This is an explicit exception to the product rule where normal `.blueprint-input` and `.blueprint-button-*` keep `2px` radius.
-- Auth inputs use dark translucent fill, thin cool border, and subtle inset highlight.
-- Auth submit is an outline/glass control by default; do not use a large saturated purple block for the login button.
-- Use `.authkit-divider` only for small structural separators such as `SECURE`, `OR`, or SSO separation.
-- Use `.authkit-trust-row` for small security/status copy below the primary action.
-
-#### Responsive Rules
-
-- Desktop (`>=1024px`): keep one centered auth card on the blueprint canvas.
-- Narrow/tablet (`<1024px`): keep the main card centered.
-- Mobile (`<520px`): reduce padding, hide corner dots, keep controls at `56px` height.
-- The auth card must not touch viewport edges; keep at least `16px` horizontal breathing room.
-
-#### Auth Screen Copy
-
-- Preferred title pattern: `Вход в AdvaCodex`, `Регистрация в AdvaCodex`.
-- Subtitle should describe the immediate action, not marketing value.
-- Eyebrow can be `ACCESS`, `CREATE ACCOUNT`, or another short technical label.
-- Keep text concise; auth screens are not landing pages.
-
-#### Auth Do Not
-
-- Do not use one huge centered `.blueprint-frame` for login.
-- Do not make the login title hero-sized.
-- Do not use a bright filled purple login button unless the screen has another clear reason for a primary CTA.
-- Do not show side ghost cards, fake forms, decorative background auth cards, or unclear UI behind the active auth card.
-- Do not let global input resets override `.authkit-input` pill radius.
-
-#### Current Production Reference
-
-The production auth screens use:
-
-- `.authkit-stage`
-- `.authkit-stack`
-- `.authkit-main-card`
-- `.authkit-register-card` for registration only
-- `.authkit-input`
-- `.authkit-submit`
-
-The computed production target is:
-
-- `.authkit-input` radius: `999px`
-- `.authkit-submit` radius: `999px`
-- Visible ghost cards: `0`
-- Login and register must share the same stage/card/control language.
-
-## Rules
-
-- Keep the canvas `#05060f`; do not introduce secondary page backgrounds.
-- Do not use gradients as content backgrounds. The only large visual field is the blueprint grid/glow.
-- Do not use saturated colors for cards, banners, or navigation states.
-- Keep icons monochrome Moonlight unless signaling success/warning/error.
-- Keep business screens dense and operational: no marketing hero layouts inside the app shell.
-- Prefer shared blueprint utilities over raw Tailwind color utilities.
-- New UI must work in dark mode only unless a light theme is explicitly requested.
-- Auth screens may be visually more atmospheric than business screens, but they still follow the same Midnight Ink, glass, hairline, and restrained-glow system.
+- Новый UI сначала ищет существующий компонент/class.
+- Если reusable primitive отсутствует, добавить его в `/frontend/src/components/ui/`.
+- Не добавлять новые hex-цвета в TSX.
+- Не использовать inline styles для статической стилизации.
+- Legacy UI мигрировать постепенно при касании соответствующего экрана.

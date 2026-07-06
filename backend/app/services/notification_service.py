@@ -19,9 +19,7 @@ class NotificationService:
         target_chat = chat_id or self.default_chat_id
         
         if not self.telegram_bot_token or not target_chat:
-            # logger.warning("Telegram Bot Token or Chat ID not configured. Message suppressed.")
-            # Для отладки в логах
-            print(f"\n[TELEGRAM SIMULATOR] To: {target_chat}\n{message}\n")
+            logger.warning("Telegram Bot Token or Chat ID not configured. Message suppressed.")
             return False
             
         url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"

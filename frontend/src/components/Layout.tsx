@@ -2,7 +2,6 @@ import { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { LogOut, User as UserIcon, LogIn, Sparkles } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { motion } from 'framer-motion'
 
 interface LayoutProps {
   children: ReactNode
@@ -96,4 +95,3 @@ export default function Layout({ children }: LayoutProps) {
     </div>
   )
 }
-

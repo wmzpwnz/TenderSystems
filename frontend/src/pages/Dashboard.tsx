@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -70,33 +70,19 @@ export default function DashboardNew() {
     
     const key = JSON.stringify(normalizedFilters)
     
-    // Логируем для отладки (только в development)
-    if (import.meta.env.DEV) {
-      console.log('[Dashboard] Search filters changed:', searchFilters)
-      console.log('[Dashboard] Normalized filters:', normalizedFilters)
-      console.log('[Dashboard] Cache key:', key)
-    }
-    
     return key
   }, [searchFilters, currentPage])
 
   // НЕ инвалидируем кеш автоматически - только при нажатии "Применить"
   // Это предотвращает использование старого кеша
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error } = useQuery({
     queryKey: ['tenders-live-search', cacheKey, searchTimestamp], // Добавляем timestamp для предотвращения кеширования
     queryFn: async () => {
       // Для Live Search берем только первый регион и первый статус
       const region = searchFilters.regions && searchFilters.regions.length > 0 ? searchFilters.regions[0] : undefined
       const status = searchFilters.statuses && searchFilters.statuses.length > 0 ? searchFilters.statuses[0] : undefined
       
-      // Логируем для отладки
-      if (import.meta.env.DEV) {
-        console.log('[Dashboard] Executing queryFn with cacheKey:', cacheKey)
-        console.log('[Dashboard] searchFilters.regions:', searchFilters.regions)
-        console.log('[Dashboard] selected region:', region)
-      }
-
       // Маппинг типов закупок
       const fz44 = searchFilters.procurement_types
         ? searchFilters.procurement_types.includes('44-ФЗ')
@@ -132,17 +118,7 @@ export default function DashboardNew() {
         procedure_types: searchFilters.procedure_types
       }
       
-      // Логируем параметры запроса для отладки
-      if (import.meta.env.DEV) {
-        console.log('[Dashboard] Calling liveSearch with params:', searchParams)
-      }
-      
       const result = await tendersApi.liveSearch(searchParams)
-      
-      if (import.meta.env.DEV) {
-        console.log('[Dashboard] Received result:', { total: result.total, itemsCount: result.items?.length })
-      }
-      
       return result
     },
     enabled: hasSearched && Boolean(user?.has_active_subscription), // Поиск выполняется ТОЛЬКО после нажатия "Применить"
@@ -338,18 +314,12 @@ export default function DashboardNew() {
               onSearch={(f) => {
                 // Этот callback НЕ должен вызываться автоматически
                 // Только обновляем фильтры для отображения в UI
-                if (import.meta.env.DEV) {
-                  console.log('[Dashboard] onSearch called - updating filters only (no search):', f)
-                }
                 setSearchFilters(f)
                 setActiveTab('all')
                 // НЕ выполняем поиск - только обновляем состояние фильтров
               }}
               initialFilters={searchFilters}
               onForceSearch={() => {
-                if (import.meta.env.DEV) {
-                  console.log('[Dashboard] onForceSearch called - executing NEW search')
-                }
                 // При нажатии "Применить" - выполняем поиск
                 setCurrentPage(1) // Сбрасываем на первую страницу
                 // Полностью удаляем ВСЕ старые запросы из кеша
@@ -387,7 +357,7 @@ export default function DashboardNew() {
                   <div className="p-3 md:p-4 rounded-md bg-[rgba(199,211,234,0.06)] shadow-[var(--shadow-subtle)] transition-shadow group-hover:shadow-[var(--shadow-sm)]">
                     <stat.icon className="h-6 w-6 md:h-7 md:w-7 text-[var(--color-moonlight)]" />
                   </div>
-                  <div className={`flex items-center gap-1 text-xs md:text-sm font-medium ${stat.trend === 'up' ? 'text-[var(--color-cipher-mint)]' : stat.trend === 'down' ? 'text-[#ff9b83]' : 'text-[var(--color-fog)]'}`}>
+                  <div className={`flex items-center gap-1 text-xs md:text-sm font-medium ${stat.trend === 'up' ? 'text-[var(--color-cipher-mint)]' : stat.trend === 'down' ? 'text-[var(--color-ember-bright)]' : 'text-[var(--color-fog)]'}`}>
                     {stat.trend !== 'neutral' && (
                       <TrendingUp className={`h-4 w-4 ${stat.trend === 'down' ? 'rotate-180' : ''}`} />
                     )}
@@ -439,7 +409,7 @@ export default function DashboardNew() {
               >
                 Избранное
                 {favoritesData && (favoritesData as any[]).length > 0 && (
-                  <span className="bg-[rgba(228,109,76,0.18)] text-[#ffb39f] text-xs font-bold rounded-full h-6 px-2 flex items-center justify-center">
+                  <span className="bg-[rgba(228,109,76,0.18)] text-[var(--color-ember-bright-soft)] text-xs font-bold rounded-full h-6 px-2 flex items-center justify-center">
                     {(favoritesData as any[]).length}
                   </span>
                 )}
@@ -453,7 +423,7 @@ export default function DashboardNew() {
               >
                 Подписки
                 {subscriptionsData && (subscriptionsData as any[]).length > 0 && (
-                  <span className="bg-[rgba(228,109,76,0.18)] text-[#ffb39f] text-xs font-bold rounded-full h-6 px-2 flex items-center justify-center">
+                  <span className="bg-[rgba(228,109,76,0.18)] text-[var(--color-ember-bright-soft)] text-xs font-bold rounded-full h-6 px-2 flex items-center justify-center">
                     {(subscriptionsData as any[]).length}
                   </span>
                 )}
@@ -542,8 +512,8 @@ export default function DashboardNew() {
         {/* Ошибка */}
         {error && (
           <div className="border border-[rgba(228,109,76,0.38)] bg-[rgba(228,109,76,0.12)] rounded-md p-6 text-center">
-            <p className="text-[#ffb39f] font-medium">Ошибка загрузки данных</p>
-            <p className="text-[#ff9b83] text-sm mt-1">Проверьте подключение к API</p>
+            <p className="text-[var(--color-ember-bright-soft)] font-medium">Ошибка загрузки данных</p>
+            <p className="text-[var(--color-ember-bright)] text-sm mt-1">Проверьте подключение к API</p>
           </div>
         )}
 
@@ -664,7 +634,7 @@ export default function DashboardNew() {
                               }
                             }
                           }}
-                          className="blueprint-button-ghost p-2 text-[var(--color-fog)] hover:text-[#ff9b83] transition-all"
+                          className="blueprint-button-ghost p-2 text-[var(--color-fog)] hover:text-[var(--color-ember-bright)] transition-all"
                           title="Удалить подписку"
                         >
                           <Trash2 className="h-5 w-5" />

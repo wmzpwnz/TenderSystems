@@ -628,7 +628,6 @@ class EISClient:
         
         Парсит публичные страницы поиска закупок
         """
-        print(f"DEBUG: Entering _search_via_html. Region: {filters.region}, Query: {filters.query}")
         try:
             # Формируем параметры для поиска
             # Увеличиваем page_size для HTML парсинга (ЕИС поддерживает до 500 на странице)

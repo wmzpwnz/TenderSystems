@@ -226,8 +226,8 @@ export default function TenderDetail() {
                         className={clsx(
                             "p-2.5 blueprint-button-ghost transition-all active:scale-90",
                             tender.is_favorite
-                                ? "text-[#ff9b83]"
-                                : "text-[var(--color-moonlight)] hover:text-[#ff9b83]"
+                                ? "text-[var(--color-ember-bright)]"
+                                : "text-[var(--color-moonlight)] hover:text-[var(--color-ember-bright)]"
                         )}
                         title={tender.is_favorite ? "Удалить из избранного" : "Добавить в избранное"}
                     >
@@ -480,7 +480,7 @@ export default function TenderDetail() {
                                                                             <span className="text-[var(--color-fog)]">Уровень конкуренции:</span>
                                                                             <span className={clsx(
                                                                                 "blueprint-status px-1.5 py-0.5",
-                                                                                intelligence.competition_level === 'High' ? "text-[#ff9b83]" :
+                                                                                intelligence.competition_level === 'High' ? "text-[var(--color-ember-bright)]" :
                                                                                     intelligence.competition_level === 'Medium' ? "text-[var(--color-ember)]" : "text-[var(--color-cipher-mint)]"
                                                                             )}>
                                                                                 {intelligence.competition_level === 'High' ? 'Высокий' : intelligence.competition_level === 'Medium' ? 'Средний' : 'Низкий'}
@@ -941,7 +941,7 @@ export default function TenderDetail() {
                             {/* Таймер / Дедлайн */}
                             <div className={clsx(
                                 "blueprint-panel p-6 flex items-center justify-between gap-4",
-                                urgency === 'urgent' ? "text-[#ffb39f]" :
+                                urgency === 'urgent' ? "text-[var(--color-ember-bright-soft)]" :
                                     urgency === 'coming' ? "text-[var(--color-ember)]" :
                                         "text-[var(--color-glacier)]"
                             )}>
@@ -995,7 +995,7 @@ export default function TenderDetail() {
                                             <p className="blueprint-eyebrow text-[10px]">Статус в CRM</p>
                                             <button
                                                 onClick={() => toggleFavoriteMutation.mutate()}
-                                                className="text-[10px] font-bold text-[#ff9b83] hover:text-[var(--color-glacier)] transition-colors uppercase tracking-widest"
+                                                className="text-[10px] font-bold text-[var(--color-ember-bright)] hover:text-[var(--color-glacier)] transition-colors uppercase tracking-widest"
                                             >
                                                 Удалить
                                             </button>

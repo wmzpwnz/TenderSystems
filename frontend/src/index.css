@@ -18,6 +18,9 @@
   --color-azure: #027dea;
   --color-cipher-mint: #269684;
   --color-blueprint-glow: #bacff7;
+  --color-ember-bright: #ff9b83;
+  --color-ember-bright-soft: #ffb39f;
+  --color-premium-gold: #d8a14d;
   --gradient-blueprint-glow: linear-gradient(0deg, #d8ecf8 0%, #98c0ef 100%);
 
   /* Typography - Font Families */
@@ -818,7 +821,7 @@ a.rounded-2xl {
 .text-red-600,
 .text-red-700,
 .text-red-800 {
-  color: #ff9b83 !important;
+  color: var(--color-ember-bright) !important;
 }
 
 .bg-blue-50,
@@ -1049,7 +1052,7 @@ a.rounded-2xl {
   border: 1px solid rgba(228, 109, 76, 0.38);
   border-radius: var(--radius-md);
   background: rgba(228, 109, 76, 0.12);
-  color: #ffb39f;
+  color: var(--color-ember-bright-soft);
 }
 
 .prose,
@@ -1186,7 +1189,7 @@ a.rounded-2xl {
 .hover\:text-red-500:hover,
 .hover\:text-red-600:hover,
 .hover\:text-red-700:hover {
-  color: #ff9b83 !important;
+  color: var(--color-ember-bright) !important;
 }
 
 .hover\:shadow-md:hover,

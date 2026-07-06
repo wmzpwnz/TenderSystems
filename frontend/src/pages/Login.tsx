@@ -2,8 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/client';
-import { motion } from 'framer-motion';
 import { Sparkles, Mail, Lock, ArrowRight, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import {
+    AuthDivider,
+    AuthHeader,
+    AuthPage,
+    AuthTrustRow,
+} from '../components/ui/Auth';
+import { Card } from '../components/ui/Card';
+import { Input } from '../components/ui/Input';
+import { Label } from '../components/ui/Label';
+import { Button } from '../components/ui/Button';
+import { ErrorText } from '../components/ui/ErrorText';
 
 export const Login: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -58,67 +68,40 @@ export const Login: React.FC = () => {
     };
 
     return (
-        <div className="blueprint-page authkit-stage px-4 py-8 sm:px-6">
-            <div className="authkit-stack">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="authkit-main-card relative z-10"
-            >
-                <div className="authkit-card-dot authkit-dot-tl" />
-                <div className="authkit-card-dot authkit-dot-tr" />
-                <div className="authkit-card-dot authkit-dot-bl" />
-                <div className="authkit-card-dot authkit-dot-br" />
+        <AuthPage>
+            <Card variant="auth">
+                <AuthHeader
+                    eyebrow="access"
+                    title="Вход в TenderSystems"
+                    subtitle="Введите данные аккаунта"
+                    icon={Sparkles}
+                />
 
-                    <div className="text-center mb-8">
-                        <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: 'spring', delay: 0.2 }}
-                            className="authkit-logo-mark"
-                        >
-                            <Sparkles className="h-8 w-8" />
-                        </motion.div>
-                        <p className="authkit-eyebrow mb-5">access</p>
-                        <h2 className="authkit-title">
-                            Вход в AdvaCodex
-                        </h2>
-                        <p className="authkit-subtitle">Введите данные аккаунта</p>
+                <form className="space-y-5" onSubmit={handleSubmit}>
+                    <div>
+                        <Label variant="auth">Email</Label>
+                        <Input
+                            variant="auth"
+                            icon={Mail}
+                            type="email"
+                            required
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="Ваш email"
+                        />
                     </div>
 
-                    <form className="space-y-5" onSubmit={handleSubmit}>
-                        <div>
-                            <label className="authkit-label">
-                                Email
-                            </label>
-                            <div className="relative">
-                                <Mail className="authkit-input-icon" />
-                                <input
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="authkit-input pl-14 pr-5"
-                                    placeholder="Ваш email"
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="authkit-label">
-                                Пароль
-                            </label>
-                            <div className="relative">
-                                <Lock className="authkit-input-icon" />
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="authkit-input pl-14 pr-14"
-                                    placeholder="••••••••"
-                                />
+                    <div>
+                        <Label variant="auth">Пароль</Label>
+                        <Input
+                            variant="auth"
+                            icon={Lock}
+                            type={showPassword ? 'text' : 'password'}
+                            required
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            rightElement={
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
@@ -126,60 +109,44 @@ export const Login: React.FC = () => {
                                 >
                                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
-                            </div>
-                        </div>
+                            }
+                        />
+                    </div>
 
-                        {/* Error */}
-                        {error && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="blueprint-danger p-4"
-                            >
-                                <p className="text-[#ff9b83] text-sm font-medium">{error}</p>
-                            </motion.div>
+                    {error && (
+                        <ErrorText variant="auth" size="sm">
+                            {error}
+                        </ErrorText>
+                    )}
+
+                    <Button variant="auth" type="submit" disabled={isLoading}>
+                        {isLoading ? (
+                            <>
+                                <div className="h-5 w-5 border-2 border-[var(--color-glacier)] border-t-transparent rounded-full animate-spin"></div>
+                                <span>Вход...</span>
+                            </>
+                        ) : (
+                            <>
+                                <span>Войти</span>
+                                <ArrowRight className="h-5 w-5" />
+                            </>
                         )}
+                    </Button>
+                </form>
 
-                        <button
-                            type="submit"
-                            disabled={isLoading}
-                            className="authkit-submit disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <div className="h-5 w-5 border-2 border-[var(--color-glacier)] border-t-transparent rounded-full animate-spin"></div>
-                                    <span>Вход...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span>Войти</span>
-                                    <ArrowRight className="h-5 w-5" />
-                                </>
-                            )}
-                        </button>
-                    </form>
+                <AuthDivider />
 
-                    <div className="authkit-divider">
-                        <span />
-                        <b>SECURE</b>
-                        <span />
-                    </div>
+                <AuthTrustRow icon={ShieldCheck}>Защищенный вход в систему мониторинга</AuthTrustRow>
 
-                    <div className="authkit-trust-row">
-                        <ShieldCheck className="h-4 w-4" />
-                        <span>Защищенный вход в систему мониторинга</span>
-                    </div>
-
-                    <div className="mt-8 text-center">
-                        <p className="text-[var(--color-pebble)] text-lg">
-                            Нет аккаунта?{' '}
-                            <Link to="/register" className="font-bold text-[var(--color-frost-link)] hover:text-[var(--color-glacier)] transition-colors">
-                                Зарегистрироваться
-                            </Link>
-                        </p>
-                    </div>
-            </motion.div>
-            </div>
-        </div>
+                <div className="mt-8 text-center">
+                    <p className="text-[var(--color-pebble)] text-lg">
+                        Нет аккаунта?{' '}
+                        <Link to="/register" className="font-bold text-[var(--color-frost-link)] hover:text-[var(--color-glacier)] transition-colors">
+                            Зарегистрироваться
+                        </Link>
+                    </p>
+                </div>
+            </Card>
+        </AuthPage>
     );
 };

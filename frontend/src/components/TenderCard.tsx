@@ -80,7 +80,7 @@ export default function TenderCard({ tender, onClick, isViewed }: TenderCardProp
     if (s.includes('подача') || s === 'active') return 'blueprint-status'
     if (s.includes('комисси') || s.includes('рассмотре') || s === 'evaluation') return 'blueprint-status'
     if (s.includes('завершено') || s.includes('заключен') || s === 'completed') return 'blueprint-status opacity-70'
-    if (s.includes('отменен') || s.includes('несостоявш') || s === 'cancelled') return 'border-[rgba(228,109,76,0.38)] bg-[rgba(228,109,76,0.12)] text-[#ffb39f]'
+    if (s.includes('отменен') || s.includes('несостоявш') || s === 'cancelled') return 'border-[rgba(228,109,76,0.38)] bg-[rgba(228,109,76,0.12)] text-[var(--color-ember-bright-soft)]'
 
     return 'blueprint-status'
   }
@@ -248,7 +248,7 @@ export default function TenderCard({ tender, onClick, isViewed }: TenderCardProp
               <span className="text-[var(--color-fog)] font-medium">Дедлайн подачи:</span>
               <span className={clsx(
                 "font-extrabold",
-                urgencyLevel === 'critical' ? 'text-[#ff9b83]' : 'text-[var(--color-glacier)]'
+                urgencyLevel === 'critical' ? 'text-[var(--color-ember-bright)]' : 'text-[var(--color-glacier)]'
               )}>
                 {formatDate(tender.application_deadline)}
               </span>
@@ -287,8 +287,8 @@ export default function TenderCard({ tender, onClick, isViewed }: TenderCardProp
                 className={clsx(
                   "p-2.5 blueprint-button-ghost transition-all active:scale-90",
                   tender.is_favorite
-                    ? "text-[#ff9b83]"
-                    : "text-[var(--color-fog)] hover:text-[#ff9b83]"
+                    ? "text-[var(--color-ember-bright)]"
+                    : "text-[var(--color-fog)] hover:text-[var(--color-ember-bright)]"
                 )}
                 title={tender.is_favorite ? "Удалить из избранного" : "Добавить в избранное"}
               >

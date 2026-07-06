@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { companyProfileApi, CompanyProfile } from '../api/client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2, Save, Building2, FileText, Award, Briefcase, Settings, CheckCircle2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 
@@ -19,16 +19,17 @@ export default function CompanyProfilePage() {
   })
   const [saveSuccess, setSaveSuccess] = useState(false)
 
-  const { data: profile, isLoading, error } = useQuery({
+  const { data: profile, isLoading } = useQuery({
     queryKey: ['companyProfile'],
     queryFn: () => companyProfileApi.get(),
     retry: false,
-    onSuccess: (data) => {
-      if (data) {
-        setFormData(data)
-      }
-    },
   })
+
+  useEffect(() => {
+    if (profile) {
+      setFormData(profile)
+    }
+  }, [profile])
 
   const saveMutation = useMutation({
     mutationFn: () => companyProfileApi.createOrUpdate(formData),
@@ -40,7 +41,6 @@ export default function CompanyProfilePage() {
   })
 
   const handleArrayChange = (field: keyof CompanyProfile, value: string) => {
-    const current = (formData[field] as string[]) || []
     const items = value.split(',').map(item => item.trim()).filter(Boolean)
     setFormData({ ...formData, [field]: items })
   }
@@ -286,7 +286,6 @@ export default function CompanyProfilePage() {
     </div>
   )
 }
-
 
 
 

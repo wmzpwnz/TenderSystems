@@ -1,249 +1,86 @@
-# 🎯 TenderSystems - Система анализа госзакупок с AI
+# Тендерный Хакер (TenderSystems)
 
-**Полнофункциональная платформа для поиска, анализа и мониторинга тендеров из Единой Информационной Системы (ЕИС) zakupki.gov.ru с интеграцией AI-анализа.**
+AI-платформа для поиска и анализа госзакупок РФ (44-ФЗ/223-ФЗ) из ЕИС zakupki.gov.ru: агрегация тендеров, быстрый и глубокий AI-анализ документации, оценка рисков и сметная AI-оценка для строительных закупок.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![Python](https://img.shields.io/badge/python-3.11-blue.svg)
-![React](https://img.shields.io/badge/react-18.2-blue.svg)
+## Статус проекта
 
----
+**MVP в разработке, не production-ready.** Поиск и часть интеграции с ЕИС уже работают, но AI-анализ сейчас раздвоен между старой и новой backend-системами. Это приоритет N1 перед любыми новыми AI-фичами.
 
-## ✨ Возможности
+## Стек
 
-### 🔍 Расширенный поиск тендеров
-- **15+ фильтров** - регион, ОКПД2, цена, сроки, площадка, преимущества
-- **Полнотекстовый поиск** с индексами для мгновенных результатов
-- **Автодополнение** в реальном времени из базы данных
-- **Модальные окна** для выбора регионов (8 ФО, 83 региона) и процедур (19 типов)
+- **Backend**: FastAPI 0.104.1, SQLAlchemy 2.0.23, Alembic, PostgreSQL, Redis, Celery + Celery Beat
+- **AI**: DeepSeek API через `httpx`
+- **Документы**: PyPDF2, pdfplumber, python-docx, openpyxl, Pillow, pytesseract, pdf2image
+- **Auth**: passlib/bcrypt, python-jose
+- **Frontend**: React 18, TypeScript, Vite, Tailwind
+- **Инфра**: Docker Compose, Sentry, slowapi
 
-### 🤖 AI-анализ тендеров
-- Анализ через DeepSeek API
-- Оценка конкурентоспособности
-- Расчёт маржинальности
-- Выявление рисков
+## Структура проекта
 
-### 📊 Интеграция с ЕИС
-- **SOAP API** - официальные сервисы отдачи информации в машиночитаемом виде ✅
-  - **getDocsIP** - для физических лиц (https://int.zakupki.gov.ru/eis-integration/services/getDocsIP)
-  - **getDocsLE** - для юридических лиц (https://int44-ttls-cert.zakupki.gov.ru/eis-integration/services/getDocsLE)
-- **HTML парсинг** - fallback для детальной информации ✅
-- ⚠️ **FTP сервер закрыт с 01.01.2025** - используется SOAP API через ЕСИА
+```text
+backend/app/
+  api/v1/          REST endpoints: auth, tenders, analysis, search, crm, subscriptions
+  models/          SQLAlchemy models: Tender, Analysis, User, CompanyProfile
+  schemas/         typed request/response schemas
+  services/        EIS integration, document processing, AI analysis
+  tasks/           Celery tasks
+  core/            config, database, security, rate limiter, logging
 
-### ⚡ Автоматизация
-- **Celery Beat** - синхронизация каждый час
-- **Обновление данных** каждые 6 часов
-- **Очистка старых тендеров** ежедневно
+frontend/src/
+  pages/           route-level pages: Login, Register, Dashboard, TenderDetail, CompanyProfile
+  components/      feature/shared components
+  components/ui/   design-system primitives; сейчас есть auth-примитивы
+```
 
----
+## Запуск
 
-## 💻 Требования к серверу
+Docker:
 
-Перед запуском убедитесь, что ваш сервер соответствует минимальным требованиям:
-
-- **CPU:** 2 ядра (рекомендуется 4)
-- **RAM:** 4 GB (рекомендуется 8 GB)
-- **Storage:** 20 GB свободного места (рекомендуется 50 GB)
-- **Docker:** версия 20.10+ и Docker Compose 2.0+
-
-📖 **[Подробные требования к серверу →](SERVER_REQUIREMENTS.md)**
-
----
-
-## 🚀 Быстрый старт
-
-### 1. Клонируйте репозиторий
-\`\`\`bash
-git clone https://github.com/your-username/TenderSystems.git
-cd TenderSystems
-\`\`\`
-
-### 2. Создайте .env файл
-\`\`\`bash
-cp .env.example .env
-\`\`\`
-
-### 3. ⚠️ ВАЖНО! Заполните .env файл
-
-**📖 [Инструкция по получению токена ЕИС →](EIS_TOKEN_SETUP.md)**
-
-Откройте \`.env\` и замените:
-
-\`\`\`bash
-# DeepSeek API (https://platform.deepseek.com/)
-DEEPSEEK_API_KEY=your_real_api_key_here
-
-# ЕИС SOAP токены (получаются через ЕСИА в личном кабинете)
-# Личный кабинет: https://zakupki.gov.ru/epz/opendata/search/results.html
-# Кнопка "Получение открытых данных" над заголовком "Результаты поиска"
-EIS_SOAP_TOKEN=your_token_for_individual_persons  # Токен для физических лиц (ФЛ)
-EIS_SOAP_TOKEN_LE=your_token_for_legal_entities  # Токен для юридических лиц (ЮЛ, опционально)
-EIS_SOAP_USER_TYPE=IP  # IP (физическое лицо) или LE (юридическое лицо)
-
-# Секретный ключ (генерация: python -c "import secrets; print(secrets.token_urlsafe(32))")
-SECRET_KEY=your_random_32_char_secret_here
-
-# СМЕНИТЬ ПАРОЛЬ БД!
-DATABASE_URL=postgresql://tenderuser:STRONG_PASSWORD@postgres:5432/tenderdb
-\`\`\`
-
-### 4. Запустите проект
-\`\`\`bash
+```bash
 docker-compose up -d
-\`\`\`
-
-### 5. Примените миграции
-\`\`\`bash
 docker-compose exec backend alembic upgrade head
-\`\`\`
+```
 
-### 6. Откройте приложение
-- **Frontend:** http://localhost:3002
-- **Backend API:** http://localhost:8003
-- **API Docs:** http://localhost:8003/docs
+Локальные адреса:
 
----
+- Frontend: `http://localhost:3002`
+- Backend API: `http://localhost:8003`
+- Swagger: `http://localhost:8003/docs`
 
-## 🔒 Безопасность
+Dev вручную:
 
-### ⚠️ КРИТИЧЕСКИ ВАЖНО
+```bash
+# backend, из backend/
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-#### 1. Не коммитьте .env!
-Проверьте:
-\`\`\`bash
-cat .gitignore | grep .env
-\`\`\`
+# celery, из backend/
+celery -A app.celery_app worker --loglevel=info
+celery -A app.celery_app beat --loglevel=info
 
-#### 2. Регенерируйте секреты
+# migrations, из backend/
+alembic upgrade head
 
-**SECRET_KEY:**
-\`\`\`bash
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-\`\`\`
-
-**Пароль БД:**
-\`\`\`bash
-openssl rand -base64 32
-\`\`\`
-
-#### 3. Измените дефолтные пароли
-
-В \`docker-compose.yml\`:
-\`\`\`yaml
-POSTGRES_PASSWORD: \${DB_PASSWORD}
-DATABASE_URL: postgresql://tenderuser:\${DB_PASSWORD}@postgres:5432/tenderdb
-\`\`\`
-
-В \`.env\`:
-\`\`\`bash
-DB_PASSWORD=your_strong_password_here
-\`\`\`
-
----
-
-## ⚙️ Переменные окружения
-
-| Переменная | Обязательная | Описание |
-|-----------|--------------|----------|
-| \`DEEPSEEK_API_KEY\` | ✅ | API ключ DeepSeek |
-| \`EIS_SOAP_TOKEN\` | ✅ | Токен SOAP API ЕИС для ФЛ (получается через ЕСИА) |
-| \`EIS_SOAP_TOKEN_LE\` | ❌ | Токен SOAP API ЕИС для ЮЛ (если используется) |
-| \`EIS_SOAP_USER_TYPE\` | ❌ | Тип пользователя: IP (ФЛ) или LE (ЮЛ), по умолчанию: IP |
-| \`SECRET_KEY\` | ✅ | JWT секретный ключ |
-| \`DATABASE_URL\` | ✅ | URL PostgreSQL |
-| \`REDIS_URL\` | ❌ | URL Redis (по умолчанию: redis://redis:6379/0) |
-| \`DEBUG\` | ❌ | Режим отладки (по умолчанию: True) |
-
-**⚠️ ВАЖНО:** Токены ЕИС получаются в личном кабинете получателя открытых данных:
-https://zakupki.gov.ru/epz/opendata/search/results.html
-Кнопка "Получение открытых данных" находится над заголовком "Результаты поиска".
-
----
-
-## 📚 API примеры
-
-### Поиск тендеров
-\`\`\`bash
-POST /api/v1/search/advanced
-{
-  "query": "медицинское оборудование",
-  "regions": ["77", "78"],
-  "price_from": 100000,
-  "platform": "roseltorg",
-  "prepayment_type": "prepayment_44fz",
-  "page": 1
-}
-\`\`\`
-
-### Статистика
-\`\`\`bash
-GET /api/v1/search/filters/stats
-\`\`\`
-
-Документация: http://localhost:8003/docs
-
----
-
-## 🏗 Архитектура
-
-\`\`\`
-TenderSystems/
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/          # API endpoints
-│   │   ├── models/          # SQLAlchemy модели
-│   │   ├── services/        # Парсеры ЕИС
-│   │   └── tasks/           # Celery задачи
-│   └── alembic/             # Миграции БД
-├── frontend/
-│   └── src/
-│       ├── components/      # React компоненты
-│       └── pages/           # Страницы
-└── docker-compose.yml
-\`\`\`
-
----
-
-## 📊 Мониторинг
-
-### Health Check
-\`\`\`bash
-curl http://localhost:8003/health
-\`\`\`
-
-### Логи
-\`\`\`bash
-docker-compose logs -f backend
-docker-compose logs -f celery
-\`\`\`
-
----
-
-## 🔧 Разработка
-
-### Backend
-\`\`\`bash
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-\`\`\`
-
-### Frontend
-\`\`\`bash
-cd frontend
-npm install
+# frontend, из frontend/
 npm run dev
-\`\`\`
+```
 
-### Миграции БД
-\`\`\`bash
-docker-compose exec backend alembic revision --autogenerate -m "Description"
-docker-compose exec backend alembic upgrade head
-\`\`\`
+Перед первым запуском скопировать `.env.example` в `.env` и заполнить реальные значения. Токен ЕИС описан в `EIS_TOKEN_SETUP.md`.
 
----
+## Известные проблемы
 
-**Сделано с ❤️ для упрощения работы с госзакупками**
+1. **Две несовместимые системы AI-анализа.** Старый путь: `analysis_service.py` + `/tenders/{id}/analyze` и `/tenders/{id}/deep-analyze`, сейчас используется `TenderDetail.tsx`. Новый путь: `deepseek_client.py` + `/analysis/*` + таблица `Analysis`, содержит нужный блок `for_construction`. Новую работу вести только через новый путь.
+2. **`deepseek-chat`/`deepseek-reasoner` устаревают 24.07.2026.** В коде есть hardcode `deepseek-chat`; нужно заменить на конфигурируемую модель `deepseek-v4-flash` или `deepseek-v4-pro`.
+3. **Обрезка текста документов.** В AI-анализе есть плоское ограничение текста примерно до 12-15 тыс. символов. Для крупных тендеров нужно чанкирование или предварительная суммаризация, а не молчаливая обрезка.
+4. **Сметная часть пока AI-оценка.** Поля вроде `estimate_analysis`, `price_per_unit`, `win_probability` нельзя показывать как точную смету без источника расценок ФЕР/ТЕР/ГЭСН.
+5. **CSRF-защита не активна.** `fastapi-csrf-protect` закомментирован в `requirements.txt`; код в `main.py` пытается подключить пакет, но при его отсутствии защита отключается.
+6. **Источник ЕИС завязан на SOAP-токен.** Подходит для текущего MVP, но требует отдельного решения перед мультитенантным SaaS.
+7. **UI-библиотека только начата.** В `components/ui` есть auth-примитивы; Button/Card/Input для продуктовых экранов еще нужно вынести.
+8. **Production security.** Для публичного деплоя нужны `DEBUG=False`, сильный `SECRET_KEY`, корректные CORS/CSRF/secret settings.
 
+## Дизайн
 
+См. `DESIGN.md`. Новые UI-изменения должны использовать токены и компоненты из `frontend/src/components/ui`.
+
+## Работа с AI-агентами
+
+См. `AGENTS.md`. Он обязателен перед любой задачей в репозитории.

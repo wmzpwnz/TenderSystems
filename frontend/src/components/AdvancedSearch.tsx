@@ -87,10 +87,6 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
     // Обновляем только если initialFilters действительно изменились извне
     // И это не первая инициализация (prevInitialFiltersRef.current пуст при первом рендере)
     if (prevInitialFiltersRef.current && prevInitialFiltersRef.current !== currentInitialFiltersStr) {
-      if (import.meta.env.DEV) {
-        console.log('[AdvancedSearch] initialFilters changed from parent, syncing local state')
-      }
-      
       // Обновляем локальное состояние
       setFilters(initialFilters)
       setQuery(initialFilters.query || '')
@@ -276,10 +272,6 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
     
     const searchParams = normalizeForSearch(baseParams)
     
-    if (import.meta.env.DEV) {
-      console.log('[AdvancedSearch] Manual search triggered with params:', searchParams)
-    }
-    
     onSearch(searchParams)
     // Если есть callback для принудительного поиска, вызываем его
     if (onForceSearch) {
@@ -289,10 +281,6 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
 
   const handleRegionsSave = (regions: string[]) => {
     const newFilters = { ...filters, regions: regions.length > 0 ? regions : undefined }
-    if (import.meta.env.DEV) {
-      console.log('[AdvancedSearch] handleRegionsSave called with regions:', regions)
-      console.log('[AdvancedSearch] Updating filters with regions:', newFilters.regions)
-    }
     // Помечаем, что это изменение пользователя, не извне
     isUpdatingFromParentRef.current = false
     setFilters(newFilters)
@@ -300,9 +288,6 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
 
   const handleProceduresSave = (procedures: string[]) => {
     const newFilters = { ...filters, procedure_types: procedures.length > 0 ? procedures : undefined }
-    if (import.meta.env.DEV) {
-      console.log('[AdvancedSearch] handleProceduresSave called with procedures:', procedures)
-    }
     // Помечаем, что это изменение пользователя, не извне
     isUpdatingFromParentRef.current = false
     setFilters(newFilters)
@@ -371,7 +356,7 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
               <SlidersHorizontal className="h-5 w-5" />
               <span className="text-sm md:text-base">Фильтры</span>
               {activeFiltersCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-[rgba(228,109,76,0.22)] text-[#ffb39f] text-xs font-bold rounded-full h-5 w-5 md:h-6 md:w-6 flex items-center justify-center">
+                <span className="absolute -top-2 -right-2 bg-[rgba(228,109,76,0.22)] text-[var(--color-ember-bright-soft)] text-xs font-bold rounded-full h-5 w-5 md:h-6 md:w-6 flex items-center justify-center">
                   {activeFiltersCount}
                 </span>
               )}
