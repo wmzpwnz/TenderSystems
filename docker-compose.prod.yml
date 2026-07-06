@@ -1,0 +1,183 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+x-eis-proxy-env: &eis-proxy-env
+  HTTPS_PROXY: ${HTTPS_PROXY:-}
+  https_proxy: ${HTTPS_PROXY:-}
+  NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,::1,postgres,redis,backend,frontend,caddy}
+  no_proxy: ${NO_PROXY:-localhost,127.0.0.1,::1,postgres,redis,backend,frontend,caddy}
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_DB: tenderdb
+      POSTGRES_USER: tenderuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tenderuser -d tenderdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    logging: *default-logging
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://tenderuser:${DB_PASSWORD:?DB_PASSWORD is required}@postgres:5432/tenderdb
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "False"
+      ALLOWED_ORIGINS: https://адвакодекс.рф,https://xn--80aafhcg7ac7a7a.xn--p1ai
+      EIS_USE_SOAP: "true"
+      EIS_SOAP_USER_TYPE: ${EIS_SOAP_USER_TYPE:-IP}
+      EIS_USE_FTP: "false"
+      EIS_USE_MOBILE_API: "false"
+      EIS_USE_HTML_PARSING: ${EIS_USE_HTML_PARSING:-false}
+      <<: *eis-proxy-env
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    logging: *default-logging
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    command: celery -A app.celery_app worker --loglevel=info
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://tenderuser:${DB_PASSWORD:?DB_PASSWORD is required}@postgres:5432/tenderdb
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "False"
+      EIS_USE_SOAP: "true"
+      EIS_SOAP_USER_TYPE: ${EIS_SOAP_USER_TYPE:-IP}
+      EIS_USE_FTP: "false"
+      EIS_USE_MOBILE_API: "false"
+      EIS_USE_HTML_PARSING: ${EIS_USE_HTML_PARSING:-false}
+      <<: *eis-proxy-env
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    logging: *default-logging
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    command: celery -A app.celery_app beat --loglevel=info
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://tenderuser:${DB_PASSWORD:?DB_PASSWORD is required}@postgres:5432/tenderdb
+      REDIS_URL: redis://redis:6379/0
+      DEBUG: "False"
+      EIS_USE_SOAP: "true"
+      EIS_SOAP_USER_TYPE: ${EIS_SOAP_USER_TYPE:-IP}
+      EIS_USE_FTP: "false"
+      EIS_USE_MOBILE_API: "false"
+      EIS_USE_HTML_PARSING: ${EIS_USE_HTML_PARSING:-false}
+      <<: *eis-proxy-env
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_API_URL: /api/v1
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    logging: *default-logging
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_started
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_uploads:
+  caddy_data:
+  caddy_config:

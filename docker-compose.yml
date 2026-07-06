@@ -1,0 +1,168 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: tender_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tenderdb
+      POSTGRES_USER: tenderuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-CHANGE_THIS_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tenderuser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: tender_redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tender_backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+    ports:
+      - "8003:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    environment:
+      - DATABASE_URL=postgresql://tenderuser:${DB_PASSWORD:-CHANGE_THIS_PASSWORD}@postgres:5432/tenderdb
+      - REDIS_URL=redis://redis:6379/0
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_API_URL=${DEEPSEEK_API_URL:-https://api.deepseek.com/v1/chat/completions}
+      - EIS_API_KEY=${EIS_API_KEY}
+      - EIS_CERT_PATH=${EIS_CERT_PATH}
+      - EIS_KEY_PATH=${EIS_KEY_PATH}
+      - EIS_USE_SOAP=${EIS_USE_SOAP:-true}
+      - EIS_SOAP_TOKEN=${EIS_SOAP_TOKEN}
+      - EIS_SOAP_TOKEN_LE=${EIS_SOAP_TOKEN_LE:-}
+      - EIS_SOAP_USER_TYPE=${EIS_SOAP_USER_TYPE:-IP}
+      - EIS_USE_FTP=${EIS_USE_FTP:-false}
+      - EIS_USE_MOBILE_API=${EIS_USE_MOBILE_API:-false}
+      - EIS_USE_HTML_PARSING=${EIS_USE_HTML_PARSING:-false}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG:-False}
+      - ALLOWED_ORIGINS=http://localhost:3002,http://localhost:8003,http://127.0.0.1:3002,http://127.0.0.1:8003
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tender_celery
+    command: celery -A app.celery_app worker --loglevel=info
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+    environment:
+      - DATABASE_URL=postgresql://tenderuser:${DB_PASSWORD:-CHANGE_THIS_PASSWORD}@postgres:5432/tenderdb
+      - REDIS_URL=redis://redis:6379/0
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_API_URL=${DEEPSEEK_API_URL:-https://api.deepseek.com/v1/chat/completions}
+      - EIS_API_KEY=${EIS_API_KEY}
+      - EIS_CERT_PATH=${EIS_CERT_PATH}
+      - EIS_KEY_PATH=${EIS_KEY_PATH}
+      - EIS_USE_SOAP=${EIS_USE_SOAP:-true}
+      - EIS_SOAP_TOKEN=${EIS_SOAP_TOKEN}
+      - EIS_SOAP_TOKEN_LE=${EIS_SOAP_TOKEN_LE:-}
+      - EIS_SOAP_USER_TYPE=${EIS_SOAP_USER_TYPE:-IP}
+      - EIS_USE_FTP=${EIS_USE_FTP:-false}
+      - EIS_USE_MOBILE_API=${EIS_USE_MOBILE_API:-false}
+      - EIS_USE_HTML_PARSING=${EIS_USE_HTML_PARSING:-false}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG:-False}
+      - ALLOWED_ORIGINS=http://localhost:3002,http://localhost:8003,http://127.0.0.1:3002,http://127.0.0.1:8003
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    env_file:
+      - .env
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: tender_celery_beat
+    command: celery -A app.celery_app beat --loglevel=info
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - ./backend/uploads:/app/uploads
+    environment:
+      - DATABASE_URL=postgresql://tenderuser:${DB_PASSWORD:-CHANGE_THIS_PASSWORD}@postgres:5432/tenderdb
+      - REDIS_URL=redis://redis:6379/0
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_API_URL=${DEEPSEEK_API_URL:-https://api.deepseek.com/v1/chat/completions}
+      - EIS_API_KEY=${EIS_API_KEY}
+      - EIS_CERT_PATH=${EIS_CERT_PATH}
+      - EIS_KEY_PATH=${EIS_KEY_PATH}
+      - EIS_USE_SOAP=${EIS_USE_SOAP:-true}
+      - EIS_SOAP_TOKEN=${EIS_SOAP_TOKEN}
+      - EIS_SOAP_TOKEN_LE=${EIS_SOAP_TOKEN_LE:-}
+      - EIS_SOAP_USER_TYPE=${EIS_SOAP_USER_TYPE:-IP}
+      - EIS_USE_FTP=${EIS_USE_FTP:-false}
+      - EIS_USE_MOBILE_API=${EIS_USE_MOBILE_API:-false}
+      - EIS_USE_HTML_PARSING=${EIS_USE_HTML_PARSING:-false}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=${DEBUG:-False}
+    depends_on:
+      - postgres
+      - redis
+      - celery
+    env_file:
+      - .env
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: tender_frontend
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8003/api/v1
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:
+
