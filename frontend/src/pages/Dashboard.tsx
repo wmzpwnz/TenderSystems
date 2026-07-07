@@ -376,7 +376,7 @@ export default function DashboardNew() {
                       initial={{ width: 0 }}
                       animate={{ width: `${progress}%` }}
                       transition={{ duration: 1, delay: 0.5 + index * 0.1 }}
-                      className="h-full bg-[var(--color-electric-iris)] rounded-full"
+                      className="h-full bg-[var(--color-frost-link)] rounded-full"
                     />
                   </div>
                 </div>
