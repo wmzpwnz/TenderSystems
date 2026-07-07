@@ -277,6 +277,7 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
     if (onForceSearch) {
       onForceSearch()
     }
+    setShowFilters(false)
   }
 
   const handleRegionsSave = (regions: string[]) => {

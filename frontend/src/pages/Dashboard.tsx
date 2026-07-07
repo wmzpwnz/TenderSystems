@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -17,6 +17,7 @@ export default function DashboardNew() {
   const navigate = useNavigate()
   const { user, logout, updateUser, isLoading: isAuthLoading } = useAuth()
   const queryClient = useQueryClient()
+  const resultsRef = useRef<HTMLElement | null>(null)
   const [searchFilters, setSearchFilters] = useState<any>({
     procurement_types: ['44-ФЗ', '223-ФЗ']
   })
@@ -328,6 +329,9 @@ export default function DashboardNew() {
                 setSearchTimestamp(Date.now())
                 // Включаем выполнение запроса - React Query автоматически выполнит запрос при изменении enabled
                 setHasSearched(true)
+                requestAnimationFrame(() => {
+                  resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                })
               }}
             />
           </motion.div>
@@ -386,7 +390,7 @@ export default function DashboardNew() {
       </div>
 
       {/* Результаты поиска */}
-      <main className="mx-auto max-w-[var(--page-max-width)] px-4 sm:px-6 lg:px-8 py-8">
+      <main ref={resultsRef} className="mx-auto max-w-[var(--page-max-width)] px-4 sm:px-6 lg:px-8 py-8">
 
         <div className="mt-12 flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
