@@ -169,7 +169,7 @@ export default function TenderCard({ tender, onClick, isViewed }: TenderCardProp
               )}
             </div>
 
-            <h2 className="text-lg font-bold text-[var(--color-glacier)] leading-tight group-hover:text-[var(--color-frost-link)] transition-colors mb-4 line-clamp-2">
+            <h2 className="text-lg font-semibold text-[var(--color-glacier)] leading-tight group-hover:text-[var(--color-frost-link)] transition-colors mb-4 line-clamp-2">
               {purchaseObject}
             </h2>
 

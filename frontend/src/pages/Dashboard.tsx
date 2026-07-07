@@ -185,7 +185,7 @@ export default function DashboardNew() {
       value: statsData?.total_tenders || 0,
       change: data?.total ? `${data.total} в поиске` : '',
       icon: Target,
-      color: 'bg-blue-500',
+      color: 'bg-[var(--color-azure)]',
       trend: 'neutral'
     },
     {
@@ -197,7 +197,7 @@ export default function DashboardNew() {
         ? `макс: ${(statsData.price.max / 1_000_000).toFixed(1)}M ₽`
         : '',
       icon: DollarSign,
-      color: 'bg-green-500',
+      color: 'bg-[var(--color-cipher-mint)]',
       trend: 'neutral'
     },
     {
@@ -205,7 +205,7 @@ export default function DashboardNew() {
       value: urgentTendersCount.toString(),
       change: `из ${data?.total || 0}`,
       icon: Clock,
-      color: 'bg-orange-500',
+      color: 'bg-[var(--color-ember)]',
       trend: 'up'
     },
     {
@@ -213,7 +213,7 @@ export default function DashboardNew() {
       value: analyzedCount.toString(),
       change: data?.total ? `${Math.round((analyzedCount / data.total) * 100)}%` : '0%',
       icon: Sparkles,
-      color: 'bg-purple-500',
+      color: 'bg-[var(--color-electric-iris)]',
       trend: 'up'
     }
   ]
@@ -394,12 +394,12 @@ export default function DashboardNew() {
 
         <div className="mt-12 flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
-            <div className="flex items-center gap-4 mb-3">
+            <div className="flex items-center gap-4 mb-3 border-b border-[rgba(186,215,247,0.12)]">
               <button
                 onClick={() => setActiveTab('all')}
                 className={clsx(
-                  "text-2xl font-semibold transition-all",
-                  activeTab === 'all' ? "text-[var(--color-glacier)] border-b border-[var(--color-frost-link)] pb-1" : "text-[var(--color-fog)] hover:text-[var(--color-moonlight)]"
+                  "text-lg font-semibold transition-all px-2 py-3 -mb-[1px]",
+                  activeTab === 'all' ? "text-[var(--color-glacier)] border-b-2 border-[var(--color-frost-link)]" : "text-[var(--color-fog)] hover:text-[var(--color-moonlight)]"
                 )}
               >
                 Все тендеры
@@ -407,13 +407,13 @@ export default function DashboardNew() {
               <button
                 onClick={() => setActiveTab('favorites')}
                 className={clsx(
-                  "text-2xl font-semibold transition-all flex items-center gap-2",
-                  activeTab === 'favorites' ? "text-[var(--color-glacier)] border-b border-[var(--color-frost-link)] pb-1" : "text-[var(--color-fog)] hover:text-[var(--color-moonlight)]"
+                  "text-lg font-semibold transition-all flex items-center gap-2 px-2 py-3 -mb-[1px]",
+                  activeTab === 'favorites' ? "text-[var(--color-glacier)] border-b-2 border-[var(--color-frost-link)]" : "text-[var(--color-fog)] hover:text-[var(--color-moonlight)]"
                 )}
               >
                 Избранное
                 {favoritesData && (favoritesData as any[]).length > 0 && (
-                  <span className="bg-[rgba(228,109,76,0.18)] text-[var(--color-ember-bright-soft)] text-xs font-bold rounded-full h-6 px-2 flex items-center justify-center">
+                  <span className="bg-[rgba(228,109,76,0.18)] text-[var(--color-ember-bright-soft)] text-xs font-bold rounded-md h-6 px-2 flex items-center justify-center">
                     {(favoritesData as any[]).length}
                   </span>
                 )}
@@ -421,13 +421,13 @@ export default function DashboardNew() {
               <button
                 onClick={() => setActiveTab('subscriptions')}
                 className={clsx(
-                  "text-2xl font-semibold transition-all flex items-center gap-2",
-                  activeTab === 'subscriptions' ? "text-[var(--color-glacier)] border-b border-[var(--color-frost-link)] pb-1" : "text-[var(--color-fog)] hover:text-[var(--color-moonlight)]"
+                  "text-lg font-semibold transition-all flex items-center gap-2 px-2 py-3 -mb-[1px]",
+                  activeTab === 'subscriptions' ? "text-[var(--color-glacier)] border-b-2 border-[var(--color-frost-link)]" : "text-[var(--color-fog)] hover:text-[var(--color-moonlight)]"
                 )}
               >
                 Подписки
                 {subscriptionsData && (subscriptionsData as any[]).length > 0 && (
-                  <span className="bg-[rgba(228,109,76,0.18)] text-[var(--color-ember-bright-soft)] text-xs font-bold rounded-full h-6 px-2 flex items-center justify-center">
+                  <span className="bg-[rgba(228,109,76,0.18)] text-[var(--color-ember-bright-soft)] text-xs font-bold rounded-md h-6 px-2 flex items-center justify-center">
                     {(subscriptionsData as any[]).length}
                   </span>
                 )}
@@ -487,7 +487,7 @@ export default function DashboardNew() {
                 }}
                 className="px-4 py-2 blueprint-button-ghost font-bold flex items-center gap-2"
               >
-                <div className="p-1 bg-white/20 rounded">
+                <div className="p-1 bg-[rgba(199,211,234,0.06)] rounded-md">
                   <BarChart3 className="h-4 w-4" />
                 </div>
                 Excel

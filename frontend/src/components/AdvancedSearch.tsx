@@ -64,10 +64,10 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
 
   // Статусы
   const statusOptions = [
-    { value: 'active', label: 'Подача заявок', color: 'bg-green-100 text-green-800' },
-    { value: 'evaluation', label: 'Работа комиссии', color: 'bg-blue-100 text-blue-800' },
-    { value: 'completed', label: 'Завершены', color: 'bg-gray-100 text-gray-800' },
-    { value: 'cancelled', label: 'Отменены', color: 'bg-red-100 text-red-800' }
+    { value: 'active', label: 'Подача заявок', color: 'bg-[rgba(199,211,234,0.06)] text-[var(--color-cipher-mint)]' },
+    { value: 'evaluation', label: 'Работа комиссии', color: 'bg-[rgba(199,211,234,0.06)] text-[var(--color-electric-iris)]' },
+    { value: 'completed', label: 'Завершены', color: 'bg-[rgba(199,211,234,0.06)] text-[var(--color-fog)]' },
+    { value: 'cancelled', label: 'Отменены', color: 'bg-[rgba(199,211,234,0.06)] text-[var(--color-ember-bright-soft)]' }
   ]
 
   // Флаг для предотвращения циклов обновлений

@@ -282,7 +282,7 @@ export default function TenderDetail() {
                             href={tenderData.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="blueprint-button-ghost px-5 py-2.5 font-bold transition-all flex items-center gap-2"
+                            className="blueprint-button-ghost px-5 py-2.5 font-semibold transition-all flex items-center gap-2"
                         >
                             Смотреть в ЕИС
                             <ExternalLink className="h-4 w-4" />
@@ -300,13 +300,13 @@ export default function TenderDetail() {
                         className="blueprint-section p-8"
                     >
                         <div className="flex flex-wrap items-center gap-3 mb-6">
-                            <span className="blueprint-status px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
+                            <span className="blueprint-status px-3 py-1 text-[11px] font-semibold uppercase tracking-wider">
                                 {tenderData.status || 'Активно'}
                             </span>
-                            <span className="blueprint-status px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
+                            <span className="blueprint-status px-3 py-1 text-[11px] font-semibold uppercase tracking-wider">
                                 {tenderData.procedure_type || 'Закупка'}
                             </span>
-                            <span className="blueprint-status px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
+                            <span className="blueprint-status px-3 py-1 text-[11px] font-semibold uppercase tracking-wider">
                                 {tenderData.number?.startsWith('2') ? '223-ФЗ' : '44-ФЗ'}
                             </span>
                         </div>
@@ -344,7 +344,7 @@ export default function TenderDetail() {
                                             initial={{ scale: 0.8 }}
                                             animate={{
                                                 scale: step.active ? 1 : 0.8,
-                                                backgroundColor: step.active ? '#663af3' : 'rgba(199,211,234,.08)',
+                                                backgroundColor: step.active ? 'var(--color-electric-iris)' : 'rgba(199,211,234,.08)',
                                                 borderColor: step.active ? 'rgba(216,236,248,.28)' : 'rgba(186,215,247,.12)'
                                             }}
                                             className={clsx(
@@ -384,7 +384,7 @@ export default function TenderDetail() {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as any)}
                                     className={clsx(
-                                        "flex items-center gap-2 pb-4 text-sm font-bold transition-all relative",
+                                        "flex items-center gap-2 pb-4 text-sm font-semibold transition-all relative",
                                         activeTab === tab.id ? "text-[var(--color-frost-link)]" : "text-[var(--color-fog)] hover:text-[var(--color-glacier)]"
                                     )}
                                 >
@@ -416,12 +416,12 @@ export default function TenderDetail() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <div className="space-y-1">
                                                 <p className="blueprint-eyebrow text-xs">Заказчик</p>
-                                                <p className="text-[var(--color-glacier)] font-bold leading-relaxed">{tenderData.customer_name}</p>
+                                                <p className="text-[var(--color-glacier)] font-semibold leading-relaxed">{tenderData.customer_name}</p>
                                                 <p className="text-xs text-[var(--color-frost-link)] font-medium">ИНН: {tenderData.customer_inn || 'не указан'}</p>
                                             </div>
                                             <div className="space-y-1">
                                                 <p className="blueprint-eyebrow text-xs">Место поставки</p>
-                                                <div className="flex items-start gap-2 text-[var(--color-glacier)] font-bold">
+                                                <div className="flex items-start gap-2 text-[var(--color-glacier)] font-semibold">
                                                     <MapPin className="h-5 w-5 text-[var(--color-fog)] flex-shrink-0 mt-0.5" />
                                                     <span>{tenderData.customer_region || 'Вся Россия'}</span>
                                                 </div>
@@ -433,7 +433,7 @@ export default function TenderDetail() {
                                                 onClick={() => setShowRequirements(!showRequirements)}
                                                 className="w-full p-6 flex items-center justify-between hover:bg-[rgba(216,236,248,.04)] transition-colors"
                                             >
-                                                <h3 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                <h3 className="font-semibold text-[var(--color-glacier)] flex items-center gap-2">
                                                     <ShieldCheck className="h-5 w-5 text-[var(--color-cipher-mint)]" />
                                                     Преимущества и требования
                                                 </h3>
@@ -513,7 +513,7 @@ export default function TenderDetail() {
                                                                             <span className="text-3xl md:text-4xl font-black">{intelligence.avg_price_reduction}</span>
                                                                             <span className="blueprint-eyebrow text-[10px]">ср. падение</span>
                                                                         </div>
-                                                                        <div className="flex items-center gap-2 text-[10px] font-bold">
+                                                                        <div className="flex items-center gap-2 text-[10px] font-semibold">
                                                                             <span className="text-[var(--color-fog)]">Уровень конкуренции:</span>
                                                                             <span className={clsx(
                                                                                 "blueprint-status px-1.5 py-0.5",
@@ -539,7 +539,7 @@ export default function TenderDetail() {
                                                                                         {i + 1}
                                                                                     </div>
                                                                                     <div className="flex flex-col">
-                                                                                        <span className="text-xs font-bold line-clamp-1">{w.name}</span>
+                                                                                        <span className="text-xs font-semibold line-clamp-1">{w.name}</span>
                                                                                         {w.avg_reduction && <span className="text-[9px] text-[var(--color-fog)]">Падение: {w.avg_reduction}</span>}
                                                                                     </div>
                                                                                 </div>
@@ -584,7 +584,7 @@ export default function TenderDetail() {
                                                                 <FileText className="h-5 w-5" />
                                                             </div>
                                                             <div>
-                                                                <p className="font-bold text-[var(--color-glacier)] group-hover:text-[var(--color-frost-link)] transition-colors">{doc.title || doc.fileName || 'Документ'}</p>
+                                                                <p className="font-semibold text-[var(--color-glacier)] group-hover:text-[var(--color-frost-link)] transition-colors">{doc.title || doc.fileName || 'Документ'}</p>
                                                                 <p className="text-xs text-[var(--color-fog)]">{doc.pubDate || 'Дата не указана'}</p>
                                                             </div>
                                                         </div>
@@ -623,7 +623,7 @@ export default function TenderDetail() {
                                                     <button
                                                         onClick={() => analyzeMutation.mutate()}
                                                         disabled={analyzeMutation.isPending || deepAnalyzeMutation.isPending}
-                                                        className="blueprint-button-ghost px-6 py-3 font-bold active:scale-95 disabled:opacity-50 flex items-center gap-2"
+                                                        className="blueprint-button-ghost px-6 py-3 font-semibold active:scale-95 disabled:opacity-50 flex items-center gap-2"
                                                     >
                                                         <Sparkles className="h-4 w-4" /> Краткое резюме
                                                     </button>
@@ -652,7 +652,7 @@ export default function TenderDetail() {
                                                                 <Sparkles className="h-4 w-4 text-[var(--color-frost-link)] animate-pulse" />
                                                             </div>
                                                         </div>
-                                                        <p className="text-[var(--color-glacier)] font-bold relative z-10">
+                                                        <p className="text-[var(--color-glacier)] font-semibold relative z-10">
                                                             {deepAnalyzeMutation.isPending ? "Скачиваю и анализирую документацию..." : "Генерирую резюме..."}
                                                         </p>
                                                         <p className="text-sm text-[var(--color-fog)] mt-1 relative z-10">Это может занять до нескольких минут</p>
@@ -671,7 +671,7 @@ export default function TenderDetail() {
                                                                     <p className="blueprint-eyebrow text-[10px] mb-1">
                                                                         {currentAnalysis.analysis_type === 'deep' ? 'Глубокий AI-анализ' : 'Краткий AI-анализ'}
                                                                     </p>
-                                                                    <h3 className="font-bold text-[var(--color-glacier)]">Результаты анализа</h3>
+                                                                    <h3 className="font-semibold text-[var(--color-glacier)]">Результаты анализа</h3>
                                                                 </div>
                                                                 {currentAnalysis.created_at && (
                                                                     <span className="blueprint-status text-[10px] font-black px-2 py-1">
@@ -702,7 +702,7 @@ export default function TenderDetail() {
                                                             <div className="blueprint-danger p-4 flex items-start gap-3">
                                                                 <AlertTriangle className="h-5 w-5 flex-shrink-0" />
                                                                 <div>
-                                                                    <p className="text-sm font-bold">Неполный анализ</p>
+                                                                    <p className="text-sm font-semibold">Неполный анализ</p>
                                                                     <p className="text-xs">{currentAnalysis.raw_ai_response.error}</p>
                                                                 </div>
                                                             </div>
@@ -736,7 +736,7 @@ export default function TenderDetail() {
                                                         {currentAnalysis.risks && (
                                                             <div className="blueprint-panel overflow-hidden">
                                                                 <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
-                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-[var(--color-glacier)] flex items-center gap-2">
                                                                         <AlertTriangle className="h-4 w-4 text-[var(--color-ember)]" />
                                                                         Риски
                                                                     </h4>
@@ -750,7 +750,7 @@ export default function TenderDetail() {
                                                                                     <AlertTriangle className="h-4 w-4" />
                                                                                 </div>
                                                                                 <div>
-                                                                                    <p className="font-bold text-[var(--color-glacier)] text-sm">{group.label}</p>
+                                                                                    <p className="font-semibold text-[var(--color-glacier)] text-sm">{group.label}</p>
                                                                                     <p className="text-xs text-[var(--color-fog)] mt-1">{item}</p>
                                                                                 </div>
                                                                             </div>
@@ -762,7 +762,7 @@ export default function TenderDetail() {
                                                                                 <ShieldCheck className="h-4 w-4" />
                                                                             </div>
                                                                             <div>
-                                                                                <p className="font-bold text-[var(--color-glacier)] text-sm">Рекомендация</p>
+                                                                                <p className="font-semibold text-[var(--color-glacier)] text-sm">Рекомендация</p>
                                                                                 <p className="text-xs text-[var(--color-fog)] mt-1">{item}</p>
                                                                             </div>
                                                                         </div>
@@ -774,7 +774,7 @@ export default function TenderDetail() {
                                                         {hasEntries(currentAnalysis.critical_requirements) && (
                                                             <div className="blueprint-panel overflow-hidden">
                                                                 <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
-                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-[var(--color-glacier)] flex items-center gap-2">
                                                                         <Target className="h-4 w-4 text-[var(--color-frost-link)]" />
                                                                         Требования к участнику
                                                                     </h4>
@@ -783,7 +783,7 @@ export default function TenderDetail() {
                                                                 <div className="divide-y divide-[rgba(186,215,247,.12)] px-6">
                                                                     {Object.entries(currentAnalysis.critical_requirements).map(([key, value]) => (
                                                                         <div key={key} className="py-4">
-                                                                            <p className="font-bold text-[var(--color-glacier)] text-sm">{key}</p>
+                                                                            <p className="font-semibold text-[var(--color-glacier)] text-sm">{key}</p>
                                                                             <p className="text-xs text-[var(--color-fog)] mt-1">{toText(value)}</p>
                                                                         </div>
                                                                     ))}
@@ -794,7 +794,7 @@ export default function TenderDetail() {
                                                         {hasEntries(financialAnalysis) && (
                                                             <div className="blueprint-panel overflow-hidden">
                                                                 <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
-                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-[var(--color-glacier)] flex items-center gap-2">
                                                                         <DollarSign className="h-4 w-4 text-[var(--color-cipher-mint)]" />
                                                                         Финансовый анализ
                                                                     </h4>
@@ -817,7 +817,7 @@ export default function TenderDetail() {
                                                         {hasEntries(constructionAnalysis) && (
                                                             <div className="blueprint-panel overflow-hidden">
                                                                 <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
-                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-[var(--color-glacier)] flex items-center gap-2">
                                                                         <Building2 className="h-4 w-4 text-[var(--color-frost-link)]" />
                                                                         Строительный блок
                                                                     </h4>
@@ -839,7 +839,7 @@ export default function TenderDetail() {
 
                                                         {hasEntries(currentAnalysis.margin_analysis) && (
                                                             <div className="blueprint-panel p-6">
-                                                                <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                <h4 className="font-semibold text-[var(--color-glacier)] flex items-center gap-2">
                                                                     <BarChart3 className="h-4 w-4 text-[var(--color-frost-link)]" />
                                                                     Маржинальность
                                                                 </h4>
@@ -858,7 +858,7 @@ export default function TenderDetail() {
                                                         {hasEntries(finalAssessment) && (
                                                             <div className="blueprint-panel overflow-hidden">
                                                                 <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
-                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-[var(--color-glacier)] flex items-center gap-2">
                                                                         <Trophy className="h-4 w-4 text-[var(--color-premium-gold)]" />
                                                                         Итоговая оценка
                                                                     </h4>
@@ -867,7 +867,7 @@ export default function TenderDetail() {
                                                                 <div className="divide-y divide-[rgba(186,215,247,.12)] px-6">
                                                                     {Object.entries(finalAssessment).map(([key, value]) => (
                                                                         <div key={key} className="py-4">
-                                                                            <p className="font-bold text-[var(--color-glacier)] text-sm">{key}</p>
+                                                                            <p className="font-semibold text-[var(--color-glacier)] text-sm">{key}</p>
                                                                             <p className="text-xs text-[var(--color-fog)] mt-1">{toText(value)}</p>
                                                                             {['win_probability', 'recommended_price', 'profitability'].includes(key) && (
                                                                                 <p className="text-[10px] text-[var(--color-fog)] mt-2">{AI_ESTIMATE_NOTICE}</p>
@@ -881,7 +881,7 @@ export default function TenderDetail() {
                                                         {currentAnalysis.documents_analyzed?.length ? (
                                                             <div className="blueprint-panel overflow-hidden">
                                                                 <div className="px-6 py-4 border-b border-[rgba(186,215,247,.12)] flex items-center justify-between">
-                                                                    <h4 className="font-bold text-[var(--color-glacier)] flex items-center gap-2">
+                                                                    <h4 className="font-semibold text-[var(--color-glacier)] flex items-center gap-2">
                                                                         <FileText className="h-4 w-4 text-[var(--color-frost-link)]" />
                                                                         Проанализированные документы
                                                                     </h4>
@@ -890,7 +890,7 @@ export default function TenderDetail() {
                                                                 <div className="divide-y divide-[rgba(186,215,247,.12)] px-6">
                                                                     {currentAnalysis.documents_analyzed.map((doc: any, i: number) => (
                                                                         <div key={i} className="py-4">
-                                                                            <p className="font-bold text-[var(--color-glacier)] text-sm">{doc.filename || `Документ ${i + 1}`}</p>
+                                                                            <p className="font-semibold text-[var(--color-glacier)] text-sm">{doc.filename || `Документ ${i + 1}`}</p>
                                                                             <p className="text-xs text-[var(--color-fog)] mt-1">
                                                                                 {doc.has_text === false ? 'Текст не извлечен' : `Извлечено символов: ${doc.text_length || 0}`}
                                                                             </p>
@@ -966,10 +966,10 @@ export default function TenderDetail() {
                                     <span className="blueprint-heading text-4xl">
                                         {tenderData.initial_price?.toLocaleString('ru-RU') || '0'}
                                     </span>
-                                    <span className="text-xl font-bold text-[var(--color-fog)]">{tenderData.currency || '₽'}</span>
+                                    <span className="text-xl font-semibold text-[var(--color-fog)]">{tenderData.currency || '₽'}</span>
                                 </div>
                                 {tenderData.guarantee_amount && (
-                                    <p className="blueprint-status text-sm font-bold inline-block px-2 py-1 mt-2">
+                                    <p className="blueprint-status text-sm font-semibold inline-block px-2 py-1 mt-2">
                                         Обеспечение заявки: {tenderData.guarantee_amount.toLocaleString('ru-RU')} ₽
                                     </p>
                                 )}
@@ -1000,7 +1000,7 @@ export default function TenderDetail() {
                                     </div>
                                     <div>
                                         <p className="blueprint-eyebrow text-[10px]">Опубликовано</p>
-                                        <p className="text-[var(--color-glacier)] font-bold">{tenderData.publication_date || 'неизвестно'}</p>
+                                        <p className="text-[var(--color-glacier)] font-semibold">{tenderData.publication_date || 'неизвестно'}</p>
                                     </div>
                                 </div>
 
@@ -1010,7 +1010,7 @@ export default function TenderDetail() {
                                     </div>
                                     <div>
                                         <p className="blueprint-eyebrow text-[10px]">Площадка</p>
-                                        <p className="text-[var(--color-glacier)] font-bold">{tenderData.platform || 'ЕИС Поиск'}</p>
+                                        <p className="text-[var(--color-glacier)] font-semibold">{tenderData.platform || 'ЕИС Поиск'}</p>
                                     </div>
                                 </div>
 
@@ -1020,7 +1020,7 @@ export default function TenderDetail() {
                                     </div>
                                     <div>
                                         <p className="blueprint-eyebrow text-[10px]">Обеспечение контракта</p>
-                                        <p className="text-[var(--color-glacier)] font-bold">{tenderData.contract_guarantee ? `${tenderData.contract_guarantee.toLocaleString('ru-RU')} ₽` : 'Не требуется'}</p>
+                                        <p className="text-[var(--color-glacier)] font-semibold">{tenderData.contract_guarantee ? `${tenderData.contract_guarantee.toLocaleString('ru-RU')} ₽` : 'Не требуется'}</p>
                                     </div>
                                 </div>
                             </div>
@@ -1032,7 +1032,7 @@ export default function TenderDetail() {
                                             <p className="blueprint-eyebrow text-[10px]">Статус в CRM</p>
                                             <button
                                                 onClick={() => toggleFavoriteMutation.mutate()}
-                                                className="text-[10px] font-bold text-[var(--color-ember-bright)] hover:text-[var(--color-glacier)] transition-colors uppercase tracking-widest"
+                                                className="text-[10px] font-semibold text-[var(--color-ember-bright)] hover:text-[var(--color-glacier)] transition-colors uppercase tracking-widest"
                                             >
                                                 Удалить
                                             </button>
@@ -1044,7 +1044,7 @@ export default function TenderDetail() {
                                                     onClick={() => updateStatusMutation.mutate(status.value)}
                                                     disabled={updateStatusMutation.isPending}
                                                     className={clsx(
-                                                        "flex items-center gap-3 px-4 py-3 rounded-[var(--radius-md)] border transition-all font-bold text-sm",
+                                                        "flex items-center gap-3 px-4 py-3 rounded-[var(--radius-md)] border transition-all font-semibold text-sm",
                                                         tenderData.crm_status === status.value
                                                             ? "bg-[rgba(102,58,243,.16)] border-[rgba(216,236,248,.32)] text-[var(--color-glacier)] shadow-[var(--shadow-sm)]"
                                                             : "bg-[rgba(199,211,234,.04)] border-[rgba(186,215,247,.12)] text-[var(--color-fog)] hover:border-[rgba(216,236,248,.28)] hover:text-[var(--color-glacier)]"
