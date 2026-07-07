@@ -138,10 +138,10 @@ export const Login: React.FC = () => {
 
                 <AuthTrustRow icon={ShieldCheck}>Защищенный вход в систему мониторинга</AuthTrustRow>
 
-                <div className="mt-8 text-center">
-                    <p className="text-[var(--color-pebble)] text-lg">
+                <div className="mt-6 text-center">
+                    <p className="text-[var(--color-pebble)] text-sm">
                         Нет аккаунта?{' '}
-                        <Link to="/register" className="font-bold text-[var(--color-frost-link)] hover:text-[var(--color-glacier)] transition-colors">
+                        <Link to="/register" className="font-semibold text-[var(--color-frost-link)] hover:text-[var(--color-glacier)] transition-colors">
                             Зарегистрироваться
                         </Link>
                     </p>

@@ -146,10 +146,10 @@ export const Register: React.FC = () => {
 
                 <AuthTrustRow icon={CheckCircle2}>Аккаунт будет создан в защищённом контуре</AuthTrustRow>
 
-                <div className="mt-8 text-center">
-                    <p className="text-[var(--color-pebble)] text-lg">
+                <div className="mt-6 text-center">
+                    <p className="text-[var(--color-pebble)] text-sm">
                         Уже есть аккаунт?{' '}
-                        <Link to="/login" className="font-bold text-[var(--color-frost-link)] hover:text-[var(--color-glacier)] transition-colors">
+                        <Link to="/login" className="font-semibold text-[var(--color-frost-link)] hover:text-[var(--color-glacier)] transition-colors">
                             Войти
                         </Link>
                     </p>

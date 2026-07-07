@@ -26,8 +26,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           className={clsx(
             variant === 'auth' ? 'authkit-input' : 'blueprint-input py-2 px-3',
-            Icon && (variant === 'auth' ? 'pl-14' : 'pl-10'),
-            rightElement && (variant === 'auth' ? 'pr-14' : 'pr-10'),
+            Icon && (variant === 'auth' ? 'pl-10' : 'pl-10'),
+            rightElement && (variant === 'auth' ? 'pr-10' : 'pr-10'),
             className
           )}
           {...props}
