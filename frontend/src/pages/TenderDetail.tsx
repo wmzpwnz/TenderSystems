@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import {
     ArrowLeft,
     ExternalLink,
@@ -25,7 +25,7 @@ import {
     AlertTriangle
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { tendersApi, analysisApi, crmApi, type Analysis } from '../api/client'
+import { tendersApi, analysisApi, crmApi, type Analysis, type Tender } from '../api/client'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -85,9 +85,11 @@ const getFinalAssessment = (analysis: Analysis | null | undefined) => {
 export default function TenderDetail() {
     const { id } = useParams<{ id: string }>()
     const navigate = useNavigate()
+    const location = useLocation()
     const [activeTab, setActiveTab] = useState<'info' | 'docs' | 'analysis'>('info')
     const [showIntelligence, setShowIntelligence] = useState(true)
     const [showRequirements, setShowRequirements] = useState(true)
+    const routeTender = (location.state as { tender?: Tender } | null)?.tender ?? null
 
     // Загрузка данных тендера
     const { data: tender, isLoading, error } = useQuery({
@@ -103,6 +105,37 @@ export default function TenderDetail() {
         queryFn: () => analysisApi.get(id!),
         enabled: !!id,
     })
+
+    const tenderData: Tender | null = (() => {
+        if (!tender && !routeTender) return null
+        if (!tender) return routeTender
+        if (!routeTender) return tender
+
+        return {
+            ...routeTender,
+            ...tender,
+            title: tender.title && tender.title !== 'Тендер' ? tender.title : routeTender.title,
+            description: tender.description ?? routeTender.description,
+            customer_name: tender.customer_name ?? routeTender.customer_name,
+            customer_inn: tender.customer_inn ?? routeTender.customer_inn,
+            customer_region: tender.customer_region ?? routeTender.customer_region,
+            initial_price: tender.initial_price ?? routeTender.initial_price,
+            guarantee_amount: tender.guarantee_amount ?? routeTender.guarantee_amount,
+            contract_guarantee: tender.contract_guarantee ?? routeTender.contract_guarantee,
+            publication_date: tender.publication_date ?? routeTender.publication_date,
+            application_deadline: tender.application_deadline ?? routeTender.application_deadline,
+            contract_deadline: tender.contract_deadline ?? routeTender.contract_deadline,
+            procedure_type: tender.procedure_type ?? routeTender.procedure_type,
+            documents_url: tender.documents_url ?? routeTender.documents_url,
+            documents_data: tender.documents_data ?? routeTender.documents_data,
+            okpd2_codes: tender.okpd2_codes ?? routeTender.okpd2_codes,
+            requirements: tender.requirements ?? routeTender.requirements,
+            platform: tender.platform ?? routeTender.platform,
+            prepayment_type: tender.prepayment_type ?? routeTender.prepayment_type,
+            preferences: tender.preferences ?? routeTender.preferences,
+            url: tender.url ?? routeTender.url,
+        }
+    })()
 
     // Мутация для запуска анализа (Краткий)
     const analyzeMutation = useMutation({
@@ -126,9 +159,9 @@ export default function TenderDetail() {
 
     // Загрузка статистики по заказчику
     const { data: intelligence, isLoading: isIntLoading } = useQuery({
-        queryKey: ['intelligence', tender?.customer_inn],
-        queryFn: () => tendersApi.getCustomerIntelligence(tender!.customer_inn!),
-        enabled: !!tender?.customer_inn && activeTab === 'info'
+        queryKey: ['intelligence', tenderData?.customer_inn],
+        queryFn: () => tendersApi.getCustomerIntelligence(tenderData!.customer_inn!),
+        enabled: !!tenderData?.customer_inn && activeTab === 'info'
     })
 
     // Мутация для избранного
@@ -167,7 +200,7 @@ export default function TenderDetail() {
         )
     }
 
-    if (error || !tender) {
+    if (error && !routeTender) {
         return (
             <div className="text-center py-20 px-4">
                 <div className="blueprint-danger inline-flex items-center justify-center w-20 h-20 rounded-full mb-6">
@@ -198,7 +231,11 @@ export default function TenderDetail() {
         } catch { return 'normal'; }
     };
 
-    const urgency = getUrgency(tender.application_deadline);
+    if (!tenderData) {
+        return null
+    }
+
+    const urgency = getUrgency(tenderData.application_deadline);
     const currentAnalysis = deepAnalyzeMutation.data || analyzeMutation.data || analysis || null
     const financialAnalysis = getAnalysisFinancial(currentAnalysis)
     const constructionAnalysis = getConstructionAnalysis(currentAnalysis)
@@ -215,7 +252,7 @@ export default function TenderDetail() {
                     <Link to="/" className="hover:text-[var(--color-glacier)] transition-colors">Поиск тендеров</Link>
                     <ChevronRight className="h-4 w-4" />
                     <span className="text-[var(--color-glacier)] font-medium truncate max-w-[200px] md:max-w-[400px]">
-                        {tender.number || tender.eis_id}
+                        {tenderData.number || tenderData.eis_id}
                     </span>
                 </nav>
 
@@ -225,13 +262,13 @@ export default function TenderDetail() {
                         disabled={toggleFavoriteMutation.isPending}
                         className={clsx(
                             "p-2.5 blueprint-button-ghost transition-all active:scale-90",
-                            tender.is_favorite
+                            tenderData.is_favorite
                                 ? "text-[var(--color-ember-bright)]"
                                 : "text-[var(--color-moonlight)] hover:text-[var(--color-ember-bright)]"
                         )}
-                        title={tender.is_favorite ? "Удалить из избранного" : "Добавить в избранное"}
+                        title={tenderData.is_favorite ? "Удалить из избранного" : "Добавить в избранное"}
                     >
-                        <Heart className={clsx("h-5 w-5", tender.is_favorite && "fill-current")} />
+                        <Heart className={clsx("h-5 w-5", tenderData.is_favorite && "fill-current")} />
                     </button>
 
                     <button className="p-2.5 blueprint-button-ghost transition-all">
@@ -240,9 +277,9 @@ export default function TenderDetail() {
                     <button className="p-2.5 blueprint-button-ghost transition-all">
                         <Printer className="h-5 w-5" />
                     </button>
-                    {tender.url && (
+                    {tenderData.url && (
                         <a
-                            href={tender.url}
+                            href={tenderData.url}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="blueprint-button-ghost px-5 py-2.5 font-bold transition-all flex items-center gap-2"
@@ -264,18 +301,18 @@ export default function TenderDetail() {
                     >
                         <div className="flex flex-wrap items-center gap-3 mb-6">
                             <span className="blueprint-status px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
-                                {tender.status || 'Активно'}
+                                {tenderData.status || 'Активно'}
                             </span>
                             <span className="blueprint-status px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
-                                {tender.procedure_type || 'Закупка'}
+                                {tenderData.procedure_type || 'Закупка'}
                             </span>
                             <span className="blueprint-status px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
-                                {tender.number?.startsWith('2') ? '223-ФЗ' : '44-ФЗ'}
+                                {tenderData.number?.startsWith('2') ? '223-ФЗ' : '44-ФЗ'}
                             </span>
                         </div>
 
                         <h1 className="blueprint-heading text-2xl md:text-3xl mb-8">
-                            {tender.title}
+                            {tenderData.title}
                         </h1>
 
                         {/* Интерактивный таймлайн */}
@@ -288,19 +325,19 @@ export default function TenderDetail() {
                                 <motion.div
                                     initial={{ width: 0 }}
                                     animate={{
-                                        width: tender.status?.includes('Завершено') ? '100%' :
-                                            tender.status?.includes('Заключен') ? '100%' :
-                                                tender.status?.includes('Комисси') ? '66%' :
-                                                    tender.status?.includes('Подача') ? '33%' : '0%'
+                                        width: tenderData.status?.includes('Завершено') ? '100%' :
+                                            tenderData.status?.includes('Заключен') ? '100%' :
+                                                tenderData.status?.includes('Комисси') ? '66%' :
+                                                    tenderData.status?.includes('Подача') ? '33%' : '0%'
                                     }}
                                     className="absolute top-5 left-0 h-0.5 bg-[var(--color-frost-link)] shadow-[var(--shadow-sm)] -z-10"
                                 />
 
                                 {[
-                                    { label: 'Публикация', date: tender.publication_date, active: true },
-                                    { label: 'Подача заявок', date: tender.application_deadline, active: tender.status?.includes('Подача') || !!tender.application_deadline },
-                                    { label: 'Рассмотрение', date: null, active: tender.status?.includes('Комисси') || tender.status?.includes('Завершено') },
-                                    { label: 'Контракт', date: null, active: tender.status?.includes('Завершено') || tender.status?.includes('Заключен') }
+                                    { label: 'Публикация', date: tenderData.publication_date, active: true },
+                                    { label: 'Подача заявок', date: tenderData.application_deadline, active: tenderData.status?.includes('Подача') || !!tenderData.application_deadline },
+                                    { label: 'Рассмотрение', date: null, active: tenderData.status?.includes('Комисси') || tenderData.status?.includes('Завершено') },
+                                    { label: 'Контракт', date: null, active: tenderData.status?.includes('Завершено') || tenderData.status?.includes('Заключен') }
                                 ].map((step, i) => (
                                     <div key={i} className="flex flex-col items-center gap-3">
                                         <motion.div
@@ -315,7 +352,7 @@ export default function TenderDetail() {
                                                 step.active ? "text-white shadow-[var(--shadow-sm)]" : "text-[var(--color-fog)]"
                                             )}
                                         >
-                                            {step.active && !tender.status?.includes('Завершено') && i === (tender.status?.includes('Подача') ? 1 : tender.status?.includes('Комисси') ? 2 : 0) ? (
+                                            {step.active && !tenderData.status?.includes('Завершено') && i === (tenderData.status?.includes('Подача') ? 1 : tenderData.status?.includes('Комисси') ? 2 : 0) ? (
                                                 <div className="w-2 h-2 bg-[var(--color-glacier)] rounded-full animate-ping" />
                                             ) : (
                                                 <div className={clsx("w-2 h-2 rounded-full", step.active ? "bg-[var(--color-glacier)]" : "bg-[var(--color-fog)]")} />
@@ -379,14 +416,14 @@ export default function TenderDetail() {
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <div className="space-y-1">
                                                 <p className="blueprint-eyebrow text-xs">Заказчик</p>
-                                                <p className="text-[var(--color-glacier)] font-bold leading-relaxed">{tender.customer_name}</p>
-                                                <p className="text-xs text-[var(--color-frost-link)] font-medium">ИНН: {tender.customer_inn || 'не указан'}</p>
+                                                <p className="text-[var(--color-glacier)] font-bold leading-relaxed">{tenderData.customer_name}</p>
+                                                <p className="text-xs text-[var(--color-frost-link)] font-medium">ИНН: {tenderData.customer_inn || 'не указан'}</p>
                                             </div>
                                             <div className="space-y-1">
                                                 <p className="blueprint-eyebrow text-xs">Место поставки</p>
                                                 <div className="flex items-start gap-2 text-[var(--color-glacier)] font-bold">
                                                     <MapPin className="h-5 w-5 text-[var(--color-fog)] flex-shrink-0 mt-0.5" />
-                                                    <span>{tender.customer_region || 'Вся Россия'}</span>
+                                                    <span>{tenderData.customer_region || 'Вся Россия'}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -412,8 +449,8 @@ export default function TenderDetail() {
                                                         className="px-6 pb-6"
                                                     >
                                                         <div className="flex flex-wrap gap-2 mb-6">
-                                                            {tender.preferences && tender.preferences.length > 0 ? (
-                                                                tender.preferences.map((p, i) => (
+                                                            {tenderData.preferences && tenderData.preferences.length > 0 ? (
+                                                                tenderData.preferences.map((p, i) => (
                                                                     <span key={i} className="blueprint-status px-3 py-1.5 text-xs font-semibold">
                                                                         {p}
                                                                     </span>
@@ -423,16 +460,16 @@ export default function TenderDetail() {
                                                             )}
                                                             <span className={clsx(
                                                                 "px-3 py-1.5 border rounded-[var(--radius-badges)] text-xs font-semibold",
-                                                                tender.prepayment_type?.includes('Без') ? "border-[rgba(186,215,247,.14)] text-[var(--color-fog)]" : "border-[rgba(38,150,132,.35)] text-[var(--color-cipher-mint)]"
+                                                                tenderData.prepayment_type?.includes('Без') ? "border-[rgba(186,215,247,.14)] text-[var(--color-fog)]" : "border-[rgba(38,150,132,.35)] text-[var(--color-cipher-mint)]"
                                                             )}>
-                                                                {tender.prepayment_type || 'Аванс не указан'}
+                                                                {tenderData.prepayment_type || 'Аванс не указан'}
                                                             </span>
                                                         </div>
 
-                                                        {tender.description && (
+                                                        {tenderData.description && (
                                                             <div className="space-y-2 pt-4 border-t border-[rgba(186,215,247,.12)]">
                                                                 <p className="blueprint-eyebrow text-[10px]">Описание объекта закупки</p>
-                                                                <p className="text-[var(--color-pebble)] leading-relaxed text-sm">{tender.description}</p>
+                                                                <p className="text-[var(--color-pebble)] leading-relaxed text-sm">{tenderData.description}</p>
                                                             </div>
                                                         )}
                                                     </motion.div>
@@ -532,7 +569,7 @@ export default function TenderDetail() {
                                         exit={{ opacity: 0, x: -10 }}
                                         className="space-y-4"
                                     >
-                                        {!tender.documents_data || tender.documents_data.length === 0 ? (
+                                        {!tenderData.documents_data || tenderData.documents_data.length === 0 ? (
                                             <div className="blueprint-panel py-12 text-center">
                                                 <Download className="h-12 w-12 text-[var(--color-fog)] mx-auto mb-4" />
                                                 <p className="text-[var(--color-pebble)]">Документация не загружена или отсутствует в общем доступе.</p>
@@ -540,7 +577,7 @@ export default function TenderDetail() {
                                             </div>
                                         ) : (
                                             <div className="grid grid-cols-1 gap-3">
-                                                {tender.documents_data.map((doc: any, i: number) => (
+                                                {tenderData.documents_data.map((doc: any, i: number) => (
                                                     <div key={i} className="blueprint-panel flex items-center justify-between p-4 transition-all group">
                                                         <div className="flex items-center gap-4">
                                                             <div className="blueprint-icon-tile h-12 w-12 group-hover:scale-105 transition-transform">
@@ -643,7 +680,7 @@ export default function TenderDetail() {
                                                                 )}
                                                             </div>
                                                             <div className="prose prose-blue max-w-none prose-sm md:prose-base">
-                                                                <ReactMarkdown>{currentAnalysis.summary || tender.description || "Резюме формируется..."}</ReactMarkdown>
+                                                                <ReactMarkdown>{currentAnalysis.summary || tenderData.description || "Резюме формируется..."}</ReactMarkdown>
                                                             </div>
                                                             <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
                                                                 <button
@@ -868,11 +905,11 @@ export default function TenderDetail() {
                                                             <button
                                                                 onClick={async () => {
                                                                     try {
-                                                                        const blob = await analysisApi.exportPdf(tender.id)
+                                                                        const blob = await analysisApi.exportPdf(tenderData.id)
                                                                         const url = window.URL.createObjectURL(new Blob([blob]))
                                                                         const link = document.createElement('a')
                                                                         link.href = url
-                                                                        link.setAttribute('download', `analysis_${tender.eis_id}.pdf`)
+                                                                        link.setAttribute('download', `analysis_${tenderData.eis_id}.pdf`)
                                                                         document.body.appendChild(link)
                                                                         link.click()
                                                                         link.remove()
@@ -927,13 +964,13 @@ export default function TenderDetail() {
                                 <p className="blueprint-eyebrow text-xs">Начальная цена</p>
                                 <div className="flex items-baseline gap-2">
                                     <span className="blueprint-heading text-4xl">
-                                        {tender.initial_price?.toLocaleString('ru-RU') || '0'}
+                                        {tenderData.initial_price?.toLocaleString('ru-RU') || '0'}
                                     </span>
-                                    <span className="text-xl font-bold text-[var(--color-fog)]">{tender.currency || '₽'}</span>
+                                    <span className="text-xl font-bold text-[var(--color-fog)]">{tenderData.currency || '₽'}</span>
                                 </div>
-                                {tender.guarantee_amount && (
+                                {tenderData.guarantee_amount && (
                                     <p className="blueprint-status text-sm font-bold inline-block px-2 py-1 mt-2">
-                                        Обеспечение заявки: {tender.guarantee_amount.toLocaleString('ru-RU')} ₽
+                                        Обеспечение заявки: {tenderData.guarantee_amount.toLocaleString('ru-RU')} ₽
                                     </p>
                                 )}
                             </div>
@@ -948,7 +985,7 @@ export default function TenderDetail() {
                                 <div>
                                     <p className="text-[10px] font-black uppercase tracking-widest mb-1">Срок подачи до</p>
                                     <p className="text-xl font-black">
-                                        {tender.application_deadline ? format(new Date(tender.application_deadline), 'dd MMMM HH:mm', { locale: ru }) : 'Не указан'}
+                                        {tenderData.application_deadline ? format(new Date(tenderData.application_deadline), 'dd MMMM HH:mm', { locale: ru }) : 'Не указан'}
                                     </p>
                                 </div>
                                 <div className="blueprint-icon-tile h-12 w-12">
@@ -963,7 +1000,7 @@ export default function TenderDetail() {
                                     </div>
                                     <div>
                                         <p className="blueprint-eyebrow text-[10px]">Опубликовано</p>
-                                        <p className="text-[var(--color-glacier)] font-bold">{tender.publication_date || 'неизвестно'}</p>
+                                        <p className="text-[var(--color-glacier)] font-bold">{tenderData.publication_date || 'неизвестно'}</p>
                                     </div>
                                 </div>
 
@@ -973,7 +1010,7 @@ export default function TenderDetail() {
                                     </div>
                                     <div>
                                         <p className="blueprint-eyebrow text-[10px]">Площадка</p>
-                                        <p className="text-[var(--color-glacier)] font-bold">{tender.platform || 'ЕИС Поиск'}</p>
+                                        <p className="text-[var(--color-glacier)] font-bold">{tenderData.platform || 'ЕИС Поиск'}</p>
                                     </div>
                                 </div>
 
@@ -983,13 +1020,13 @@ export default function TenderDetail() {
                                     </div>
                                     <div>
                                         <p className="blueprint-eyebrow text-[10px]">Обеспечение контракта</p>
-                                        <p className="text-[var(--color-glacier)] font-bold">{tender.contract_guarantee ? `${tender.contract_guarantee.toLocaleString('ru-RU')} ₽` : 'Не требуется'}</p>
+                                        <p className="text-[var(--color-glacier)] font-bold">{tenderData.contract_guarantee ? `${tenderData.contract_guarantee.toLocaleString('ru-RU')} ₽` : 'Не требуется'}</p>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="pt-4 space-y-3">
-                                {tender.is_favorite ? (
+                                {tenderData.is_favorite ? (
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
                                             <p className="blueprint-eyebrow text-[10px]">Статус в CRM</p>
@@ -1008,12 +1045,12 @@ export default function TenderDetail() {
                                                     disabled={updateStatusMutation.isPending}
                                                     className={clsx(
                                                         "flex items-center gap-3 px-4 py-3 rounded-[var(--radius-md)] border transition-all font-bold text-sm",
-                                                        tender.crm_status === status.value
+                                                        tenderData.crm_status === status.value
                                                             ? "bg-[rgba(102,58,243,.16)] border-[rgba(216,236,248,.32)] text-[var(--color-glacier)] shadow-[var(--shadow-sm)]"
                                                             : "bg-[rgba(199,211,234,.04)] border-[rgba(186,215,247,.12)] text-[var(--color-fog)] hover:border-[rgba(216,236,248,.28)] hover:text-[var(--color-glacier)]"
                                                     )}
                                                 >
-                                                    <status.icon className={clsx("h-4 w-4", tender.crm_status === status.value ? "text-[var(--color-frost-link)]" : "text-[var(--color-fog)]")} />
+                                                    <status.icon className={clsx("h-4 w-4", tenderData.crm_status === status.value ? "text-[var(--color-frost-link)]" : "text-[var(--color-fog)]")} />
                                                     {status.label}
                                                 </button>
                                             ))}

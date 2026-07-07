@@ -543,7 +543,7 @@ export default function DashboardNew() {
                     isViewed={viewedTenders.includes(String(tender.id))}
                     onClick={() => {
                       markAsViewed(String(tender.id))
-                      navigate(`/tender/${tender.eis_id}`)
+                      navigate(`/tender/${tender.eis_id}`, { state: { tender } })
                     }}
                   />
                 ))}
@@ -562,7 +562,7 @@ export default function DashboardNew() {
                   <TenderCard
                     key={fav.id || fav.eis_id}
                     tender={fav}
-                    onClick={() => navigate(`/tender/${fav.eis_id}`)}
+                    onClick={() => navigate(`/tender/${fav.eis_id}`, { state: { tender: fav } })}
                   />
                 ))
               ) : (
