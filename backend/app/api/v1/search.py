@@ -27,6 +27,35 @@ router = APIRouter()
 from app.core.limiter import limiter
 
 
+def _parse_eis_result_date(value: Any) -> Optional[datetime]:
+    """Парсит даты из live-search ЕИС в ISO и русском формате."""
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        return value
+
+    if not isinstance(value, str):
+        return None
+
+    normalized = value.strip()
+    if not normalized:
+        return None
+
+    for parser in (
+        lambda raw: datetime.fromisoformat(raw.replace("Z", "+00:00")),
+        lambda raw: datetime.strptime(raw, "%d.%m.%Y %H:%M"),
+        lambda raw: datetime.strptime(raw, "%d.%m.%Y"),
+    ):
+        try:
+            return parser(normalized)
+        except ValueError:
+            continue
+
+    logger.debug("Unsupported EIS date format in live search: %s", value)
+    return None
+
+
 class SearchRequest(BaseModel):
     """Расширенный запрос для поиска"""
     # Основной поиск
@@ -555,11 +584,13 @@ async def search_eis_live(
         if filters.deadline_less_than_days:
             today = datetime.now().date()
             deadline_threshold = today + timedelta(days=filters.deadline_less_than_days)
-            filtered_items = [item for item in filtered_items 
-                            if item.get('application_deadline') and 
-                            isinstance(item.get('application_deadline'), (str, datetime)) and
-                            (isinstance(item['application_deadline'], datetime) and item['application_deadline'].date() <= deadline_threshold or
-                             isinstance(item['application_deadline'], str) and datetime.fromisoformat(item['application_deadline'].replace('Z', '+00:00')).date() <= deadline_threshold)]
+            filtered_items = [
+                item
+                for item in filtered_items
+                if (
+                    parsed_deadline := _parse_eis_result_date(item.get('application_deadline'))
+                ) is not None and parsed_deadline.date() <= deadline_threshold
+            ]
         
         # Фильтр по обеспечению заявки
         if filters.guarantee_from is not None:
