@@ -58,7 +58,7 @@ services:
       DATABASE_URL: postgresql://tenderuser:${DB_PASSWORD:?DB_PASSWORD is required}@postgres:5432/tenderdb
       REDIS_URL: redis://redis:6379/0
       DEBUG: "False"
-      ALLOWED_ORIGINS: https://адвакодекс.рф,https://xn--80aafhcg7ac7a7a.xn--p1ai
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?ALLOWED_ORIGINS is required}
       EIS_USE_SOAP: "true"
       EIS_SOAP_USER_TYPE: ${EIS_SOAP_USER_TYPE:-IP}
       EIS_USE_FTP: "false"
@@ -159,6 +159,8 @@ services:
     image: caddy:2-alpine
     restart: unless-stopped
     logging: *default-logging
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN is required}
     dns:
       - 1.1.1.1
       - 8.8.8.8

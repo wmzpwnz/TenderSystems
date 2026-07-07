@@ -1,4 +1,4 @@
-xn--80aafhcg7ac7a7a.xn--p1ai {
+{$APP_DOMAIN} {
     encode gzip zstd
 
     handle /api/* {
