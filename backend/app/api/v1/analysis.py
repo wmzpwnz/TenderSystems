@@ -30,6 +30,19 @@ eis_client = EISClient()
 from app.core.limiter import limiter
 
 
+def _normalize_risk_level(value: Optional[str]) -> str:
+    if not value:
+        return "medium"
+
+    normalized = value.strip().lower()
+
+    if any(token in normalized for token in ("low", "низ", "minimal", "миним")):
+        return "low"
+    if any(token in normalized for token in ("high", "выс", "critical", "крит")):
+        return "high"
+    return "medium"
+
+
 @router.post("/{tender_id}", response_model=dict)
 async def analyze_tender(
     tender_id: int,
@@ -246,7 +259,9 @@ async def quick_analyze_tender(
             },
             margin_analysis={},
             win_probability=win_probability,
-            risk_level=ai_analysis.get("quick_assessment", {}).get("complexity", "medium"),
+            risk_level=_normalize_risk_level(
+                ai_analysis.get("quick_assessment", {}).get("complexity")
+            ),
             documents_analyzed=documents_analyzed,
             raw_ai_response=ai_analysis
         )
@@ -405,7 +420,7 @@ async def deep_analyze_tender(
                 "profitability": ai_analysis.get("final_assessment", {}).get("profitability")
             },
             win_probability=win_probability,
-            risk_level=ai_analysis.get("risks", {}).get("level", "medium"),
+            risk_level=_normalize_risk_level(ai_analysis.get("risks", {}).get("level")),
             documents_analyzed=documents_analyzed,
             cost_breakdown=cost_breakdown,
             raw_ai_response=ai_analysis
@@ -742,7 +757,7 @@ async def analyze_by_tender_number(
         risks=ai_analysis.get("risks", {}),
         margin_analysis=ai_analysis.get("margin_analysis", {}),
         win_probability=win_probability,
-        risk_level=ai_analysis.get("risks", {}).get("level", "medium"),
+        risk_level=_normalize_risk_level(ai_analysis.get("risks", {}).get("level")),
         raw_ai_response=ai_analysis
     )
 
