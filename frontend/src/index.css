@@ -1098,7 +1098,7 @@ a.rounded-2xl {
 }
 
 .authkit-main-card input.authkit-input {
-  border-radius: 999px !important;
+  border-radius: 6px !important;
   background: rgba(5, 6, 15, 0.46) !important;
   box-shadow: rgba(199, 211, 234, 0.08) 0 1px 1px inset !important;
 }
@@ -1106,7 +1106,7 @@ a.rounded-2xl {
 .authkit-main-card input.authkit-input:focus {
   border-color: rgba(182, 217, 252, 0.58) !important;
   background: rgba(5, 6, 15, 0.58) !important;
-  box-shadow: rgba(199, 211, 234, 0.1) 0 1px 1px inset, rgba(186, 207, 247, 0.24) 0 0 0 3px !important;
+  box-shadow: rgba(199, 211, 234, 0.1) 0 1px 1px inset, rgba(102, 58, 243, 0.15) 0 0 0 3px !important;
 }
 
 .text-green-500,
