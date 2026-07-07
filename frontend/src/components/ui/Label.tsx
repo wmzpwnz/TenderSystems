@@ -13,7 +13,7 @@ export const Label = forwardRef<HTMLLabelElement, LabelProps>(
         ref={ref}
         className={clsx(
           variant === 'auth'
-            ? 'authkit-label'
+            ? 'auth-label'
             : 'block text-[var(--color-glacier)] font-medium mb-2',
           className
         )}

@@ -17,16 +17,16 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
           className={clsx(
-            'authkit-main-card relative z-10',
-            variant === 'auth-register' && 'authkit-register-card',
+            'auth-main-card relative z-10',
+            variant === 'auth-register' && 'auth-register-card',
             className
           )}
           {...props}
         >
-          <div className="authkit-card-dot authkit-dot-tl" />
-          <div className="authkit-card-dot authkit-dot-tr" />
-          <div className="authkit-card-dot authkit-dot-bl" />
-          <div className="authkit-card-dot authkit-dot-br" />
+          <div className="auth-card-dot auth-dot-tl" />
+          <div className="auth-card-dot auth-dot-tr" />
+          <div className="auth-card-dot auth-dot-bl" />
+          <div className="auth-card-dot auth-dot-br" />
           {children}
         </motion.div>
       );

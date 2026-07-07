@@ -9,8 +9,8 @@ type AuthPageProps = {
 
 export function AuthPage({ children }: AuthPageProps) {
   return (
-    <div className="blueprint-page authkit-stage px-4 py-8 sm:px-6">
-      <div className="authkit-stack">{children}</div>
+    <div className="blueprint-page auth-stage px-4 py-8 sm:px-6">
+      <div className="auth-stack">{children}</div>
     </div>
   );
 }
@@ -29,13 +29,13 @@ export function AuthHeader({ eyebrow, title, subtitle, icon: Icon }: AuthHeaderP
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ type: 'spring', delay: 0.2 }}
-        className="authkit-logo-mark"
+        className="auth-logo-mark"
       >
         <Icon className="h-6 w-6" />
       </motion.div>
-      <p className="authkit-eyebrow mb-4">{eyebrow}</p>
-      <h2 className="authkit-title">{title}</h2>
-      <p className="authkit-subtitle">{subtitle}</p>
+      <p className="auth-eyebrow mb-4">{eyebrow}</p>
+      <h2 className="auth-title">{title}</h2>
+      <p className="auth-subtitle">{subtitle}</p>
     </div>
   );
 }
@@ -46,7 +46,7 @@ type AuthDividerProps = {
 
 export function AuthDivider({ label = 'SECURE' }: AuthDividerProps) {
   return (
-    <div className="authkit-divider">
+    <div className="auth-divider">
       <span />
       <b>{label}</b>
       <span />
@@ -61,7 +61,7 @@ type AuthTrustRowProps = {
 
 export function AuthTrustRow({ icon: Icon, children }: AuthTrustRowProps) {
   return (
-    <div className="authkit-trust-row">
+    <div className="auth-trust-row">
       <Icon className="h-4 w-4" />
       <span>{children}</span>
     </div>

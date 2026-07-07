@@ -17,7 +17,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           <Icon
             className={clsx(
               variant === 'auth'
-                ? 'authkit-input-icon'
+                ? 'auth-input-icon'
                 : 'absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--color-pebble)]'
             )}
           />
@@ -25,7 +25,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         <input
           ref={ref}
           className={clsx(
-            variant === 'auth' ? 'authkit-input' : 'blueprint-input py-2 px-3',
+            variant === 'auth' ? 'auth-input' : 'blueprint-input py-2 px-3',
             Icon && (variant === 'auth' ? 'pl-10' : 'pl-10'),
             rightElement && (variant === 'auth' ? 'pr-10' : 'pr-10'),
             className

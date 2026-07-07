@@ -36,7 +36,7 @@ export const Login: React.FC = () => {
 
             const data = await authApi.login(formData);
             await login(data.access_token);
-            navigate('/');
+            navigate('/dashboard');
         } catch (err: any) {
             let errorMessage = 'Ошибка входа';
             
@@ -105,7 +105,7 @@ export const Login: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="authkit-eye-button"
+                                    className="auth-eye-button"
                                 >
                                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
