@@ -391,7 +391,7 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                 <MapPin className="h-3 w-3" />
                 {region}
                 <X
-                  className="h-3 w-3 cursor-pointer hover:text-blue-900"
+                  className="h-3 w-3 cursor-pointer hover:text-[var(--color-glacier)]"
                   onClick={() => setFilters(f => ({ ...f, regions: f.regions?.filter(r => r !== region) }))}
                 />
               </span>
@@ -525,7 +525,7 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={handleClearFilters}
-                    className="text-sm text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
+                    className="text-sm text-[var(--color-ember-bright)] hover:text-[var(--color-ember)] font-medium flex items-center gap-1"
                   >
                     <X className="h-4 w-4" />
                     Сбросить все
@@ -599,7 +599,7 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
 
                 {/* Ключевые слова */}
                 <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <Search className="h-4 w-4" />
                     Ключевые слова
                   </label>
@@ -609,13 +609,13 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                   />
                 </div>
 
                 {/* Исключить слова */}
                 <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <X className="h-4 w-4" />
                     Исключить слова
                   </label>
@@ -624,32 +624,32 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                     placeholder="Слова, которые не должны встречаться"
                     value={excludeKeywords}
                     onChange={(e) => setExcludeKeywords(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                   />
                 </div>
 
                 {/* Регион поставки */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <MapPin className="h-4 w-4" />
                     Регион поставки
                   </label>
                   <button
                     onClick={() => setRegionModalOpen(true)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-left hover:border-blue-500 transition-colors flex items-center justify-between"
+                    className="w-full px-4 py-2.5 border border-[var(--color-steel-border)] rounded-lg text-left hover:border-blue-500 transition-colors flex items-center justify-between"
                   >
-                    <span className={filters.regions && filters.regions.length > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'}>
+                    <span className={filters.regions && filters.regions.length > 0 ? 'text-[var(--color-glacier)] font-medium' : 'text-[var(--color-fog)]'}>
                       {filters.regions && filters.regions.length > 0
                         ? `Выбрано регионов: ${filters.regions.length}`
                         : 'Все регионы'}
                     </span>
-                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                    <ChevronDown className="h-4 w-4 text-[var(--color-fog)]" />
                   </button>
                 </div>
 
                 {/* Этап */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <FileText className="h-4 w-4" />
                     Этап
                   </label>
@@ -660,9 +660,9 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                           type="checkbox"
                           checked={filters.statuses?.includes(status.value) || false}
                           onChange={() => toggleStatus(status.value)}
-                          className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
+                          className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
                         />
-                        <span className="text-sm text-gray-700">{status.label}</span>
+                        <span className="text-sm text-[var(--color-moonlight)]">{status.label}</span>
                       </label>
                     ))}
                   </div>
@@ -670,7 +670,7 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
 
                 {/* Цена */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <DollarSign className="h-4 w-4" />
                     Цена (₽)
                   </label>
@@ -682,9 +682,9 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                       onChange={(e) =>
                         setFilters({ ...filters, price_from: e.target.value ? Number(e.target.value) : undefined })
                       }
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                     />
-                    <span className="text-gray-500">—</span>
+                    <span className="text-[var(--color-fog)]">—</span>
                     <input
                       type="number"
                       placeholder="До"
@@ -692,14 +692,14 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                       onChange={(e) =>
                         setFilters({ ...filters, price_to: e.target.value ? Number(e.target.value) : undefined })
                       }
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                     />
                   </div>
                 </div>
 
                 {/* Срок подачи заявок */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <Calendar className="h-4 w-4" />
                     Срок подачи заявок
                   </label>
@@ -714,8 +714,8 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                           })
                         }
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filters.deadline_less_than_days === days
-                          ? 'bg-orange-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'bg-[var(--color-ember)] text-white'
+                          : 'bg-gray-100 text-[var(--color-moonlight)] hover:bg-gray-200'
                           }`}
                       >
                         &lt; {days} дней
@@ -726,7 +726,7 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
 
                 {/* Тип торгов */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <FileText className="h-4 w-4" />
                     Тип торгов
                   </label>
@@ -737,9 +737,9 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                           type="checkbox"
                           checked={filters.procurement_types?.includes(type) || false}
                           onChange={() => toggleProcurementType(type)}
-                          className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
+                          className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
                         />
-                        <span className="text-sm text-gray-700">{type}</span>
+                        <span className="text-sm text-[var(--color-moonlight)]">{type}</span>
                       </label>
                     ))}
                   </div>
@@ -747,26 +747,26 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
 
                 {/* Способ отбора (способ определения поставщика) */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <FileText className="h-4 w-4" />
                     Способ отбора
                   </label>
                   <button
                     onClick={() => setProcedureModalOpen(true)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-left hover:border-blue-500 transition-colors flex items-center justify-between"
+                    className="w-full px-4 py-2.5 border border-[var(--color-steel-border)] rounded-lg text-left hover:border-blue-500 transition-colors flex items-center justify-between"
                   >
-                    <span className={filters.procedure_types && filters.procedure_types.length > 0 ? 'text-gray-900 font-medium' : 'text-gray-500'}>
+                    <span className={filters.procedure_types && filters.procedure_types.length > 0 ? 'text-[var(--color-glacier)] font-medium' : 'text-[var(--color-fog)]'}>
                       {filters.procedure_types && filters.procedure_types.length > 0
                         ? `Выбрано способов: ${filters.procedure_types.length}`
                         : 'Все способы'}
                     </span>
-                    <ChevronDown className="h-4 w-4 text-gray-400" />
+                    <ChevronDown className="h-4 w-4 text-[var(--color-fog)]" />
                   </button>
                 </div>
 
                 {/* Дата публикации */}
                 <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <Calendar className="h-4 w-4" />
                     Опубликовано
                   </label>
@@ -775,21 +775,21 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                       type="date"
                       value={filters.published_from || ''}
                       onChange={(e) => setFilters({ ...filters, published_from: e.target.value || undefined })}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                     />
-                    <span className="text-gray-500">—</span>
+                    <span className="text-[var(--color-fog)]">—</span>
                     <input
                       type="date"
                       value={filters.published_to || ''}
                       onChange={(e) => setFilters({ ...filters, published_to: e.target.value || undefined })}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                     />
                   </div>
                 </div>
 
                 {/* Заказчик */}
                 <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <Building2 className="h-4 w-4" />
                     Заказчик
                   </label>
@@ -798,20 +798,20 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                     placeholder="Название или ИНН заказчика"
                     value={filters.customer_name || ''}
                     onChange={(e) => setFilters({ ...filters, customer_name: e.target.value || undefined })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                   />
                 </div>
 
                 {/* Площадка */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <FileText className="h-4 w-4" />
                     Площадка
                   </label>
                   <select
                     value={filters.platform || ''}
                     onChange={(e) => setFilters({ ...filters, platform: e.target.value || undefined })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                   >
                     <option value="">Все площадки</option>
                     <option value="roseltorg">РТС-тендер (Росэлторг)</option>
@@ -827,7 +827,7 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
 
                 {/* Авансирование */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <DollarSign className="h-4 w-4" />
                     Авансирование
                   </label>
@@ -843,9 +843,9 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                           name="prepayment"
                           checked={filters.prepayment_type === option.value}
                           onChange={() => setFilters({ ...filters, prepayment_type: option.value })}
-                          className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-2 focus:ring-blue-500"
+                          className="h-4 w-4 text-[var(--color-frost-link)] border-[var(--color-steel-border)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
                         />
-                        <span className="text-sm text-gray-700">{option.label}</span>
+                        <span className="text-sm text-[var(--color-moonlight)]">{option.label}</span>
                       </label>
                     ))}
                   </div>
@@ -853,7 +853,7 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
 
                 {/* Обеспечение заявки */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <DollarSign className="h-4 w-4" />
                     Обеспечение заявки (₽)
                   </label>
@@ -864,15 +864,15 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                         placeholder="От"
                         value={filters.guarantee_from || ''}
                         onChange={(e) => setFilters({ ...filters, guarantee_from: e.target.value ? Number(e.target.value) : undefined })}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                       />
-                      <span className="text-gray-500">—</span>
+                      <span className="text-[var(--color-fog)]">—</span>
                       <input
                         type="number"
                         placeholder="До"
                         value={filters.guarantee_to || ''}
                         onChange={(e) => setFilters({ ...filters, guarantee_to: e.target.value ? Number(e.target.value) : undefined })}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                       />
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -886,16 +886,16 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                             setFilters({ ...filters, guarantee_from: undefined, guarantee_to: undefined })
                           }
                         }}
-                        className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                        className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)]"
                       />
-                      <span className="text-sm text-gray-700">Без обеспечения заявки</span>
+                      <span className="text-sm text-[var(--color-moonlight)]">Без обеспечения заявки</span>
                     </label>
                   </div>
                 </div>
 
                 {/* Обеспечение контракта */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <DollarSign className="h-4 w-4" />
                     Обеспечение контракта (₽)
                   </label>
@@ -906,15 +906,15 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                         placeholder="От"
                         value={filters.contract_guarantee_from || ''}
                         onChange={(e) => setFilters({ ...filters, contract_guarantee_from: e.target.value ? Number(e.target.value) : undefined })}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                       />
-                      <span className="text-gray-500">—</span>
+                      <span className="text-[var(--color-fog)]">—</span>
                       <input
                         type="number"
                         placeholder="До"
                         value={filters.contract_guarantee_to || ''}
                         onChange={(e) => setFilters({ ...filters, contract_guarantee_to: e.target.value ? Number(e.target.value) : undefined })}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                       />
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer">
@@ -928,16 +928,16 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                             setFilters({ ...filters, contract_guarantee_from: undefined, contract_guarantee_to: undefined })
                           }
                         }}
-                        className="h-4 w-4 text-blue-600 rounded border-gray-300"
+                        className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)]"
                       />
-                      <span className="text-sm text-gray-700">Без обеспечения контракта</span>
+                      <span className="text-sm text-[var(--color-moonlight)]">Без обеспечения контракта</span>
                     </label>
                   </div>
                 </div>
 
                 {/* Преимущества и ограничения */}
                 <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-3">
+                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
                     <FileText className="h-4 w-4" />
                     Преимущества и ограничения
                   </label>
@@ -961,9 +961,9 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                               : [...current, pref]
                             setFilters({ ...filters, preferences: updated.length > 0 ? updated : undefined })
                           }}
-                          className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-2 focus:ring-blue-500"
+                          className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
                         />
-                        <span className="text-sm text-gray-700">{pref}</span>
+                        <span className="text-sm text-[var(--color-moonlight)]">{pref}</span>
                       </label>
                     ))}
                   </div>
@@ -971,8 +971,8 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
               </div>
 
               {/* Кнопки действий */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-600">
+              <div className="flex items-center justify-between pt-4 border-t border-[rgba(186,215,247,0.12)]">
+                <div className="text-sm text-[var(--color-pebble)]">
                   {activeFiltersCount > 0 ? (
                     <span>
                       Активных фильтров: <strong>{activeFiltersCount}</strong>
@@ -984,7 +984,7 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setShowFilters(false)}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="px-4 py-2 text-[var(--color-moonlight)] hover:bg-[rgba(199,211,234,0.06)] rounded-lg transition-colors"
                   >
                     Свернуть
                   </button>
@@ -1005,10 +1005,10 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
       {activeFiltersCount > 0 && !showFilters && (
         <div className="mt-3 flex flex-wrap gap-2">
           {filters.regions && filters.regions.length > 0 && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+            <span className="inline-flex items-center gap-1 px-3 py-1 border border-[rgba(186,215,247,0.12)] bg-[rgba(199,211,234,0.06)] text-[var(--color-azure)] rounded-[var(--radius-badges)] text-sm">
               <MapPin className="h-3 w-3" />
               Регионов: {filters.regions.length}
-              <button onClick={() => setFilters({ ...filters, regions: undefined })} className="ml-1 hover:text-blue-900">
+              <button onClick={() => setFilters({ ...filters, regions: undefined })} className="ml-1 hover:text-[var(--color-glacier)]">
                 <X className="h-3 w-3" />
               </button>
             </span>
@@ -1018,34 +1018,34 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
             return (
               <span
                 key={status}
-                className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm ${statusOption?.color}`}
+                className={`inline-flex items-center gap-1 px-3 py-1 border border-[rgba(186,215,247,0.12)] rounded-[var(--radius-badges)] text-sm ${statusOption?.color}`}
               >
                 {statusOption?.label}
-                <button onClick={() => toggleStatus(status)} className="ml-1">
+                <button onClick={() => toggleStatus(status)} className="ml-1 hover:text-[var(--color-glacier)]">
                   <X className="h-3 w-3" />
                 </button>
               </span>
             )
           })}
           {(filters.price_from || filters.price_to) && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
+            <span className="inline-flex items-center gap-1 px-3 py-1 border border-[rgba(186,215,247,0.12)] bg-[rgba(199,211,234,0.06)] text-[var(--color-cipher-mint)] rounded-[var(--radius-badges)] text-sm">
               <DollarSign className="h-3 w-3" />
               {filters.price_from && `от ${filters.price_from.toLocaleString()}`}
               {filters.price_from && filters.price_to && ' '}
               {filters.price_to && `до ${filters.price_to.toLocaleString()}`} ₽
               <button
                 onClick={() => setFilters({ ...filters, price_from: undefined, price_to: undefined })}
-                className="ml-1"
+                className="ml-1 hover:text-[var(--color-glacier)]"
               >
                 <X className="h-3 w-3" />
               </button>
             </span>
           )}
           {filters.deadline_less_than_days && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm">
+            <span className="inline-flex items-center gap-1 px-3 py-1 border border-[rgba(186,215,247,0.12)] bg-[rgba(199,211,234,0.06)] text-[var(--color-ember-bright-soft)] rounded-[var(--radius-badges)] text-sm">
               <Calendar className="h-3 w-3" />
               Дедлайн &lt; {filters.deadline_less_than_days} дней
-              <button onClick={() => setFilters({ ...filters, deadline_less_than_days: undefined })} className="ml-1">
+              <button onClick={() => setFilters({ ...filters, deadline_less_than_days: undefined })} className="ml-1 hover:text-[var(--color-glacier)]">
                 <X className="h-3 w-3" />
               </button>
             </span>
