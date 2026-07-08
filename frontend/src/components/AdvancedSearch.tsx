@@ -52,6 +52,13 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
   const [filters, setFilters] = useState<SearchFilters>(initialFilters)
   const [activeFiltersCount, setActiveFiltersCount] = useState(0)
 
+  // Группы раскрытия детальных фильтров
+  const [expandedGroups, setExpandedGroups] = useState({
+    typeAndProcedure: false,
+    customerAndConditions: false,
+    fineTuning: false
+  })
+
   // Модальные окна
   const [regionModalOpen, setRegionModalOpen] = useState(false)
   const [procedureModalOpen, setProcedureModalOpen] = useState(false)
@@ -384,30 +391,228 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
 
         {query.length >= 2 && <AutocompleteSuggestions query={query} onSelect={setQuery} />}
 
-        {(filters.regions?.length || filters.statuses?.length) && (
-          <div className="flex flex-wrap gap-2 mt-3 px-2">
-            {filters.regions?.map(region => (
-              <span key={region} className="inline-flex items-center gap-1.5 px-3 py-1.5 blueprint-status text-xs font-semibold transition-all">
-                <MapPin className="h-3 w-3" />
-                {region}
-                <X
-                  className="h-3 w-3 cursor-pointer hover:text-[var(--color-glacier)]"
-                  onClick={() => setFilters(f => ({ ...f, regions: f.regions?.filter(r => r !== region) }))}
-                />
-              </span>
-            ))}
-            {filters.statuses?.map(status => (
-              <span key={status} className="inline-flex items-center gap-1.5 px-3 py-1.5 blueprint-status text-xs font-semibold transition-all">
-                {statusOptions.find(o => o.value === status)?.label || status}
-                <X
-                  className="h-3 w-3 cursor-pointer hover:text-emerald-900"
-                  onClick={() => toggleStatus(status)}
-                />
-              </span>
+      </div>
+
+      {/* Всегда видимые фильтры */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-3 p-4 bg-[rgba(199,211,234,0.02)] border border-[rgba(186,215,247,0.06)] rounded-lg">
+        {/* 1. Регион */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)]">
+            <MapPin className="h-3.5 w-3.5 text-[var(--color-frost-link)]" />
+            Регион поставки
+          </label>
+          <button
+            type="button"
+            onClick={() => setRegionModalOpen(true)}
+            className="w-full px-3 py-2 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-left hover:border-blue-500 transition-colors flex items-center justify-between text-sm"
+          >
+            <span className={filters.regions && filters.regions.length > 0 ? 'text-[var(--color-glacier)] font-medium' : 'text-[var(--color-fog)]'}>
+              {filters.regions && filters.regions.length > 0
+                ? `Выбрано регионов: ${filters.regions.length}`
+                : 'Все регионы'}
+            </span>
+            <ChevronDown className="h-4 w-4 text-[var(--color-fog)]" />
+          </button>
+        </div>
+
+        {/* 2. Цена */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)]">
+            <DollarSign className="h-3.5 w-3.5 text-[var(--color-frost-link)]" />
+            Цена контракта (₽)
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              placeholder="От"
+              value={filters.price_from || ''}
+              onChange={(e) =>
+                setFilters({ ...filters, price_from: e.target.value ? Number(e.target.value) : undefined })
+              }
+              className="w-full px-3 py-1.5 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-sm text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
+            />
+            <span className="text-[var(--color-fog)] text-xs">—</span>
+            <input
+              type="number"
+              placeholder="До"
+              value={filters.price_to || ''}
+              onChange={(e) =>
+                setFilters({ ...filters, price_to: e.target.value ? Number(e.target.value) : undefined })
+              }
+              className="w-full px-3 py-1.5 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-sm text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* 3. Дедлайн */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)]">
+            <Calendar className="h-3.5 w-3.5 text-[var(--color-frost-link)]" />
+            Срок подачи заявок
+          </label>
+          <div className="flex gap-1.5 flex-wrap">
+            {[3, 7, 14, 30].map((days) => (
+              <button
+                key={days}
+                type="button"
+                onClick={() =>
+                  setFilters({
+                    ...filters,
+                    deadline_less_than_days: filters.deadline_less_than_days === days ? undefined : days
+                  })
+                }
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${filters.deadline_less_than_days === days
+                  ? 'bg-[var(--color-ember)] text-white shadow-sm'
+                  : 'bg-[rgba(199,211,234,0.06)] text-[var(--color-moonlight)] hover:bg-[rgba(199,211,234,0.12)]'
+                  }`}
+              >
+                &lt; {days} дн
+              </button>
             ))}
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Активные фильтры (Чипы) */}
+      {activeFiltersCount > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-3 px-2">
+          {filters.regions?.map(region => (
+            <span key={region} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              <MapPin className="h-3 w-3 text-[var(--color-fog)]" />
+              {region}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => setFilters(f => ({ ...f, regions: f.regions?.filter(r => r !== region) }))}
+              />
+            </span>
+          ))}
+
+          {filters.statuses?.map(status => (
+            <span key={status} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              {statusOptions.find(o => o.value === status)?.label || status}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => toggleStatus(status)}
+              />
+            </span>
+          ))}
+
+          {(filters.price_from || filters.price_to) && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              <DollarSign className="h-3 w-3 text-[var(--color-fog)]" />
+              Цена: {filters.price_from ? `от ${filters.price_from.toLocaleString()} ₽` : ''} {filters.price_to ? `до ${filters.price_to.toLocaleString()} ₽` : ''}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => setFilters(f => ({ ...f, price_from: undefined, price_to: undefined }))}
+              />
+            </span>
+          )}
+
+          {filters.deadline_less_than_days && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              <Calendar className="h-3 w-3 text-[var(--color-fog)]" />
+              Подача &lt; {filters.deadline_less_than_days} дн
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => setFilters(f => ({ ...f, deadline_less_than_days: undefined }))}
+              />
+            </span>
+          )}
+
+          {filters.procurement_types?.map(type => (
+            <span key={type} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              {type}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => setFilters(f => ({ ...f, procurement_types: f.procurement_types?.filter(t => t !== type) }))}
+              />
+            </span>
+          ))}
+
+          {filters.procedure_types?.map(type => (
+            <span key={type} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              {type}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => setFilters(f => ({ ...f, procedure_types: f.procedure_types?.filter(t => t !== type) }))}
+              />
+            </span>
+          ))}
+
+          {filters.platform && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              Площадка: {filters.platform}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => setFilters(f => ({ ...f, platform: undefined }))}
+              />
+            </span>
+          )}
+
+          {filters.customer_name && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              Заказчик: {filters.customer_name}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => setFilters(f => ({ ...f, customer_name: undefined }))}
+              />
+            </span>
+          )}
+
+          {filters.prepayment_type && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              {filters.prepayment_type === 'prepayment_44fz' ? 'С авансом 44-ФЗ' : filters.prepayment_type === 'prepayment_223fz' ? 'С авансом 223-ФЗ' : 'Без аванса'}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => setFilters(f => ({ ...f, prepayment_type: undefined }))}
+              />
+            </span>
+          )}
+
+          {filters.preferences?.map(pref => (
+            <span key={pref} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              {pref}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => setFilters(f => ({ ...f, preferences: f.preferences?.filter(p => p !== pref) }))}
+              />
+            </span>
+          ))}
+
+          {filters.okpd2_codes?.map(code => (
+            <span key={code} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              ОКПД2: {code}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => setFilters(f => ({ ...f, okpd2_codes: f.okpd2_codes?.filter(c => c !== code) }))}
+              />
+            </span>
+          ))}
+
+          {excludeKeywords && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              Исключить: {excludeKeywords}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => {
+                  setExcludeKeywords('');
+                  setFilters(f => ({ ...f, exclude_keywords: undefined }));
+                }}
+              />
+            </span>
+          )}
+
+          {(filters.published_from || filters.published_to) && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[rgba(199,211,234,0.06)] text-xs font-semibold rounded-[var(--radius-badges)] text-[var(--color-glacier)] border border-[rgba(186,215,247,0.08)]">
+              Опубликовано: {filters.published_from || ''} — {filters.published_to || ''}
+              <X
+                className="h-3 w-3 cursor-pointer hover:text-[var(--color-ember-bright)]"
+                onClick={() => setFilters(f => ({ ...f, published_from: undefined, published_to: undefined }))}
+              />
+            </span>
+          )}
+        </div>
+      )}
 
       <AnimatePresence>
         {showSaveModal && (
@@ -533,446 +738,317 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Быстрые фильтры / Смарт-фильтры */}
-                <div className="blueprint-panel md:col-span-2 flex flex-wrap gap-6 p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="blueprint-icon-tile h-9 w-9">
-                      <DollarSign className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="blueprint-eyebrow text-[10px]">Финансы</p>
-                      <label className="flex items-center gap-3 mt-1 cursor-pointer group">
-                        <div className={clsx(
-                          "w-12 h-6 rounded-full transition-all relative",
-                          filters.prepayment_type ? "bg-blue-600 shadow-md shadow-blue-200" : "bg-gray-200"
-                        )}>
-                          <input
-                            type="checkbox"
-                            checked={!!filters.prepayment_type}
-                            onChange={() => setFilters({ ...filters, prepayment_type: filters.prepayment_type ? undefined : 'prepayment_44fz' })}
-                            className="sr-only"
-                          />
-                          <div className={clsx(
-                            "absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300",
-                            filters.prepayment_type && "translate-x-6"
-                          )} />
-                        </div>
-                        <span className="text-sm font-bold text-[var(--color-moonlight)]">С авансом</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="w-px h-10 bg-blue-100 hidden md:block" />
-
-                  <div className="flex items-center gap-3">
-                    <div className="blueprint-icon-tile h-9 w-9">
-                      <Building2 className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="blueprint-eyebrow text-[10px]">Участники</p>
-                      <label className="flex items-center gap-3 mt-1 cursor-pointer group">
-                        <div className={clsx(
-                          "w-12 h-6 rounded-full transition-all relative",
-                          filters.preferences?.includes('СМП/СОНКО') ? "bg-emerald-600 shadow-md shadow-emerald-200" : "bg-gray-200"
-                        )}>
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={filters.preferences?.includes('СМП/СОНКО') || false}
-                            onChange={() => {
-                              const current = filters.preferences || []
-                              const updated = current.includes('СМП/СОНКО') ? current.filter(p => p !== 'СМП/СОНКО') : [...current, 'СМП/СОНКО']
-                              setFilters({ ...filters, preferences: updated.length > 0 ? updated : undefined })
-                            }}
-                          />
-                          <div className={clsx(
-                            "absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300",
-                            filters.preferences?.includes('СМП/СОНКО') && "translate-x-6"
-                          )} />
-                        </div>
-                        <span className="text-sm font-bold text-[var(--color-moonlight)]">Только СМП</span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ключевые слова */}
-                <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <Search className="h-4 w-4" />
-                    Ключевые слова
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Например: лыжи, лыжные палки, 36.40.11.133"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="w-full px-4 py-2.5 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                  />
-                </div>
-
-                {/* Исключить слова */}
-                <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <X className="h-4 w-4" />
-                    Исключить слова
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Слова, которые не должны встречаться"
-                    value={excludeKeywords}
-                    onChange={(e) => setExcludeKeywords(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                  />
-                </div>
-
-                {/* Регион поставки */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <MapPin className="h-4 w-4" />
-                    Регион поставки
-                  </label>
+              <div className="space-y-4">
+                {/* Группа 1: Тип и процедура */}
+                <div className="border border-[rgba(186,215,247,0.08)] bg-[rgba(5,6,15,0.2)] rounded-xl overflow-hidden">
                   <button
-                    onClick={() => setRegionModalOpen(true)}
-                    className="w-full px-4 py-2.5 border border-[var(--color-steel-border)] rounded-lg text-left hover:border-blue-500 transition-colors flex items-center justify-between"
+                    type="button"
+                    onClick={() => setExpandedGroups(prev => ({ ...prev, typeAndProcedure: !prev.typeAndProcedure }))}
+                    className="w-full flex items-center justify-between p-4 font-bold text-sm text-[var(--color-glacier)] hover:bg-[rgba(199,211,234,0.04)] transition-all"
                   >
-                    <span className={filters.regions && filters.regions.length > 0 ? 'text-[var(--color-glacier)] font-medium' : 'text-[var(--color-fog)]'}>
-                      {filters.regions && filters.regions.length > 0
-                        ? `Выбрано регионов: ${filters.regions.length}`
-                        : 'Все регионы'}
+                    <span className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-[var(--color-electric-iris)]" />
+                      Тип и процедура
                     </span>
-                    <ChevronDown className="h-4 w-4 text-[var(--color-fog)]" />
+                    <ChevronDown className={clsx("h-4 w-4 transition-transform text-[var(--color-fog)]", expandedGroups.typeAndProcedure && "rotate-180")} />
                   </button>
+                  {expandedGroups.typeAndProcedure && (
+                    <div className="p-4 border-t border-[rgba(186,215,247,0.08)] grid grid-cols-1 md:grid-cols-2 gap-6 bg-[rgba(5,6,15,0.1)]">
+                      {/* Этап */}
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Этап закупки
+                        </label>
+                        <div className="space-y-2.5">
+                          {statusOptions.map((status) => (
+                            <label key={status.value} className="flex items-center gap-2 cursor-pointer group text-xs text-[var(--color-moonlight)]">
+                              <input
+                                type="checkbox"
+                                checked={filters.statuses?.includes(status.value) || false}
+                                onChange={() => toggleStatus(status.value)}
+                                className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)] bg-[rgba(5,6,15,0.3)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
+                              />
+                              <span className="group-hover:text-[var(--color-glacier)] transition-colors">{status.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Тип торгов */}
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Тип торгов
+                        </label>
+                        <div className="space-y-2.5">
+                          {['44-ФЗ', '223-ФЗ', '615 ПП РФ', 'Коммерческие', 'Малые закупки'].map((type) => (
+                            <label key={type} className="flex items-center gap-2 cursor-pointer group text-xs text-[var(--color-moonlight)]">
+                              <input
+                                type="checkbox"
+                                checked={filters.procurement_types?.includes(type) || false}
+                                onChange={() => toggleProcurementType(type)}
+                                className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)] bg-[rgba(5,6,15,0.3)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
+                              />
+                              <span className="group-hover:text-[var(--color-glacier)] transition-colors">{type}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Способ отбора */}
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Способ отбора поставщика
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setProcedureModalOpen(true)}
+                          className="w-full px-3 py-2 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-left hover:border-blue-500 transition-colors flex items-center justify-between text-xs text-[var(--color-glacier)]"
+                        >
+                          <span>
+                            {filters.procedure_types && filters.procedure_types.length > 0
+                              ? `Выбрано способов: ${filters.procedure_types.length}`
+                              : 'Все способы'}
+                          </span>
+                          <ChevronDown className="h-4 w-4 text-[var(--color-fog)]" />
+                        </button>
+                      </div>
+
+                      {/* Площадка */}
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Электронная площадка
+                        </label>
+                        <select
+                          value={filters.platform || ''}
+                          onChange={(e) => setFilters({ ...filters, platform: e.target.value || undefined })}
+                          className="w-full px-3 py-2 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-xs text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
+                        >
+                          <option value="">Все площадки</option>
+                          <option value="roseltorg">РТС-тендер (Росэлторг)</option>
+                          <option value="sberbank-ast">Сбербанк-АСТ</option>
+                          <option value="etp-gpb">ЭТП ГПБ</option>
+                          <option value="zakazrf">Заказ.РФ</option>
+                          <option value="etp-fabrikant">ЭТП Фабрикант</option>
+                          <option value="b2b-center">B2B-Center</option>
+                          <option value="rts-tender">РТС-тендер</option>
+                          <option value="otc-tender">ОТС.тендер</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Этап */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <FileText className="h-4 w-4" />
-                    Этап
-                  </label>
-                  <div className="space-y-2">
-                    {statusOptions.map((status) => (
-                      <label key={status.value} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={filters.statuses?.includes(status.value) || false}
-                          onChange={() => toggleStatus(status.value)}
-                          className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
-                        />
-                        <span className="text-sm text-[var(--color-moonlight)]">{status.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Цена */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <DollarSign className="h-4 w-4" />
-                    Цена (₽)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      placeholder="От"
-                      value={filters.price_from || ''}
-                      onChange={(e) =>
-                        setFilters({ ...filters, price_from: e.target.value ? Number(e.target.value) : undefined })
-                      }
-                      className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                    />
-                    <span className="text-[var(--color-fog)]">—</span>
-                    <input
-                      type="number"
-                      placeholder="До"
-                      value={filters.price_to || ''}
-                      onChange={(e) =>
-                        setFilters({ ...filters, price_to: e.target.value ? Number(e.target.value) : undefined })
-                      }
-                      className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                {/* Срок подачи заявок */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <Calendar className="h-4 w-4" />
-                    Срок подачи заявок
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {[3, 7, 14, 30].map((days) => (
-                      <button
-                        key={days}
-                        onClick={() =>
-                          setFilters({
-                            ...filters,
-                            deadline_less_than_days: filters.deadline_less_than_days === days ? undefined : days
-                          })
-                        }
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${filters.deadline_less_than_days === days
-                          ? 'bg-[var(--color-ember)] text-white'
-                          : 'bg-gray-100 text-[var(--color-moonlight)] hover:bg-gray-200'
-                          }`}
-                      >
-                        &lt; {days} дней
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Тип торгов */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <FileText className="h-4 w-4" />
-                    Тип торгов
-                  </label>
-                  <div className="space-y-2">
-                    {['44-ФЗ', '223-ФЗ', '615 ПП РФ', 'Коммерческие', 'Закупки СНГ', 'Малые закупки'].map((type) => (
-                      <label key={type} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={filters.procurement_types?.includes(type) || false}
-                          onChange={() => toggleProcurementType(type)}
-                          className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
-                        />
-                        <span className="text-sm text-[var(--color-moonlight)]">{type}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Способ отбора (способ определения поставщика) */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <FileText className="h-4 w-4" />
-                    Способ отбора
-                  </label>
+                {/* Группа 2: Заказчик и условия */}
+                <div className="border border-[rgba(186,215,247,0.08)] bg-[rgba(5,6,15,0.2)] rounded-xl overflow-hidden">
                   <button
-                    onClick={() => setProcedureModalOpen(true)}
-                    className="w-full px-4 py-2.5 border border-[var(--color-steel-border)] rounded-lg text-left hover:border-blue-500 transition-colors flex items-center justify-between"
+                    type="button"
+                    onClick={() => setExpandedGroups(prev => ({ ...prev, customerAndConditions: !prev.customerAndConditions }))}
+                    className="w-full flex items-center justify-between p-4 font-bold text-sm text-[var(--color-glacier)] hover:bg-[rgba(199,211,234,0.04)] transition-all"
                   >
-                    <span className={filters.procedure_types && filters.procedure_types.length > 0 ? 'text-[var(--color-glacier)] font-medium' : 'text-[var(--color-fog)]'}>
-                      {filters.procedure_types && filters.procedure_types.length > 0
-                        ? `Выбрано способов: ${filters.procedure_types.length}`
-                        : 'Все способы'}
+                    <span className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-[var(--color-electric-iris)]" />
+                      Заказчик и условия контракта
                     </span>
-                    <ChevronDown className="h-4 w-4 text-[var(--color-fog)]" />
+                    <ChevronDown className={clsx("h-4 w-4 transition-transform text-[var(--color-fog)]", expandedGroups.customerAndConditions && "rotate-180")} />
                   </button>
-                </div>
-
-                {/* Дата публикации */}
-                <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <Calendar className="h-4 w-4" />
-                    Опубликовано
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="date"
-                      value={filters.published_from || ''}
-                      onChange={(e) => setFilters({ ...filters, published_from: e.target.value || undefined })}
-                      className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                    />
-                    <span className="text-[var(--color-fog)]">—</span>
-                    <input
-                      type="date"
-                      value={filters.published_to || ''}
-                      onChange={(e) => setFilters({ ...filters, published_to: e.target.value || undefined })}
-                      className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                    />
-                  </div>
-                </div>
-
-                {/* Заказчик */}
-                <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <Building2 className="h-4 w-4" />
-                    Заказчик
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Название или ИНН заказчика"
-                    value={filters.customer_name || ''}
-                    onChange={(e) => setFilters({ ...filters, customer_name: e.target.value || undefined })}
-                    className="w-full px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                  />
-                </div>
-
-                {/* Площадка */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <FileText className="h-4 w-4" />
-                    Площадка
-                  </label>
-                  <select
-                    value={filters.platform || ''}
-                    onChange={(e) => setFilters({ ...filters, platform: e.target.value || undefined })}
-                    className="w-full px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                  >
-                    <option value="">Все площадки</option>
-                    <option value="roseltorg">РТС-тендер (Росэлторг)</option>
-                    <option value="sberbank-ast">Сбербанк-АСТ</option>
-                    <option value="etp-gpb">ЭТП ГПБ</option>
-                    <option value="zakazrf">Заказ.РФ</option>
-                    <option value="etp-fabrikant">ЭТП Фабрикант</option>
-                    <option value="b2b-center">B2B-Center</option>
-                    <option value="rts-tender">РТС-тендер</option>
-                    <option value="otc-tender">ОТС.тендер</option>
-                  </select>
-                </div>
-
-                {/* Авансирование */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <DollarSign className="h-4 w-4" />
-                    Авансирование
-                  </label>
-                  <div className="space-y-2">
-                    {[
-                      { value: 'prepayment_44fz', label: 'С авансом по 44-ФЗ' },
-                      { value: 'prepayment_223fz', label: 'С авансом по 223-ФЗ' },
-                      { value: 'no_prepayment', label: 'Без аванса для других типов торгов' }
-                    ].map((option) => (
-                      <label key={option.value} className="flex items-center gap-2 cursor-pointer">
+                  {expandedGroups.customerAndConditions && (
+                    <div className="p-4 border-t border-[rgba(186,215,247,0.08)] grid grid-cols-1 md:grid-cols-2 gap-6 bg-[rgba(5,6,15,0.1)]">
+                      {/* Заказчик */}
+                      <div className="md:col-span-2">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Наименование заказчика или ИНН
+                        </label>
                         <input
-                          type="radio"
-                          name="prepayment"
-                          checked={filters.prepayment_type === option.value}
-                          onChange={() => setFilters({ ...filters, prepayment_type: option.value })}
-                          className="h-4 w-4 text-[var(--color-frost-link)] border-[var(--color-steel-border)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
+                          type="text"
+                          placeholder="Например: ГКУ УКС или ИНН..."
+                          value={filters.customer_name || ''}
+                          onChange={(e) => setFilters({ ...filters, customer_name: e.target.value || undefined })}
+                          className="w-full px-3 py-2 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-xs text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                         />
-                        <span className="text-sm text-[var(--color-moonlight)]">{option.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                      </div>
 
-                {/* Обеспечение заявки */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <DollarSign className="h-4 w-4" />
-                    Обеспечение заявки (₽)
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        placeholder="От"
-                        value={filters.guarantee_from || ''}
-                        onChange={(e) => setFilters({ ...filters, guarantee_from: e.target.value ? Number(e.target.value) : undefined })}
-                        className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                      />
-                      <span className="text-[var(--color-fog)]">—</span>
-                      <input
-                        type="number"
-                        placeholder="До"
-                        value={filters.guarantee_to || ''}
-                        onChange={(e) => setFilters({ ...filters, guarantee_to: e.target.value ? Number(e.target.value) : undefined })}
-                        className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                      />
+                      {/* Авансирование */}
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Аванс
+                        </label>
+                        <div className="space-y-2 text-xs text-[var(--color-moonlight)]">
+                          {[
+                            { value: 'prepayment_44fz', label: 'С авансом по 44-ФЗ' },
+                            { value: 'prepayment_223fz', label: 'С авансом по 223-ФЗ' },
+                            { value: 'no_prepayment', label: 'Без аванса' }
+                          ].map((option) => (
+                            <label key={option.value} className="flex items-center gap-2 cursor-pointer group">
+                              <input
+                                type="radio"
+                                name="prepayment"
+                                checked={filters.prepayment_type === option.value}
+                                onChange={() => setFilters({ ...filters, prepayment_type: option.value })}
+                                className="h-4 w-4 text-[var(--color-frost-link)] border-[var(--color-steel-border)] bg-[rgba(5,6,15,0.3)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
+                              />
+                              <span className="group-hover:text-[var(--color-glacier)] transition-colors">{option.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Преимущества и преференции */}
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Преимущества (СМП/СОНКО)
+                        </label>
+                        <div className="grid grid-cols-1 gap-2 text-xs text-[var(--color-moonlight)]">
+                          {[
+                            'СМП/СОНКО',
+                            'Организации инвалидов',
+                            'Импортозамещение'
+                          ].map((pref) => (
+                            <label key={pref} className="flex items-center gap-2 cursor-pointer group">
+                              <input
+                                type="checkbox"
+                                checked={filters.preferences?.includes(pref) || false}
+                                onChange={() => {
+                                  const current = filters.preferences || []
+                                  const updated = current.includes(pref)
+                                    ? current.filter(p => p !== pref)
+                                    : [...current, pref]
+                                  setFilters({ ...filters, preferences: updated.length > 0 ? updated : undefined })
+                                }}
+                                className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)] bg-[rgba(5,6,15,0.3)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
+                              />
+                              <span className="group-hover:text-[var(--color-glacier)] transition-colors">{pref}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Обеспечение заявки */}
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Обеспечение заявки (₽)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            placeholder="От"
+                            value={filters.guarantee_from || ''}
+                            onChange={(e) => setFilters({ ...filters, guarantee_from: e.target.value ? Number(e.target.value) : undefined })}
+                            className="w-full px-3 py-1.5 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-xs text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
+                          />
+                          <span className="text-[var(--color-fog)] text-xs">—</span>
+                          <input
+                            type="number"
+                            placeholder="До"
+                            value={filters.guarantee_to || ''}
+                            onChange={(e) => setFilters({ ...filters, guarantee_to: e.target.value ? Number(e.target.value) : undefined })}
+                            className="w-full px-3 py-1.5 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-xs text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Обеспечение контракта */}
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Обеспечение контракта (₽)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            placeholder="От"
+                            value={filters.contract_guarantee_from || ''}
+                            onChange={(e) => setFilters({ ...filters, contract_guarantee_from: e.target.value ? Number(e.target.value) : undefined })}
+                            className="w-full px-3 py-1.5 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-xs text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
+                          />
+                          <span className="text-[var(--color-fog)] text-xs">—</span>
+                          <input
+                            type="number"
+                            placeholder="До"
+                            value={filters.contract_guarantee_to || ''}
+                            onChange={(e) => setFilters({ ...filters, contract_guarantee_to: e.target.value ? Number(e.target.value) : undefined })}
+                            className="w-full px-3 py-1.5 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-xs text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.guarantee_from === 0 && filters.guarantee_to === 0}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFilters({ ...filters, guarantee_from: 0, guarantee_to: 0 })
-                          } else {
-                            setFilters({ ...filters, guarantee_from: undefined, guarantee_to: undefined })
-                          }
-                        }}
-                        className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)]"
-                      />
-                      <span className="text-sm text-[var(--color-moonlight)]">Без обеспечения заявки</span>
-                    </label>
-                  </div>
+                  )}
                 </div>
 
-                {/* Обеспечение контракта */}
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <DollarSign className="h-4 w-4" />
-                    Обеспечение контракта (₽)
-                  </label>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        placeholder="От"
-                        value={filters.contract_guarantee_from || ''}
-                        onChange={(e) => setFilters({ ...filters, contract_guarantee_from: e.target.value ? Number(e.target.value) : undefined })}
-                        className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                      />
-                      <span className="text-[var(--color-fog)]">—</span>
-                      <input
-                        type="number"
-                        placeholder="До"
-                        value={filters.contract_guarantee_to || ''}
-                        onChange={(e) => setFilters({ ...filters, contract_guarantee_to: e.target.value ? Number(e.target.value) : undefined })}
-                        className="flex-1 px-3 py-2 border border-[var(--color-steel-border)] rounded-lg focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
-                      />
-                    </div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={filters.contract_guarantee_from === 0 && filters.contract_guarantee_to === 0}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFilters({ ...filters, contract_guarantee_from: 0, contract_guarantee_to: 0 })
-                          } else {
-                            setFilters({ ...filters, contract_guarantee_from: undefined, contract_guarantee_to: undefined })
-                          }
-                        }}
-                        className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)]"
-                      />
-                      <span className="text-sm text-[var(--color-moonlight)]">Без обеспечения контракта</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Преимущества и ограничения */}
-                <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-[var(--color-moonlight)] mb-3">
-                    <FileText className="h-4 w-4" />
-                    Преимущества и ограничения
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      'СМП/СОНКО',
-                      'Учреждения УИС',
-                      'Организации инвалидов',
-                      'Предприятия ВПК',
-                      'Импортозамещение',
-                      'Российское ПО'
-                    ].map((pref) => (
-                      <label key={pref} className="flex items-center gap-2 cursor-pointer">
+                {/* Группа 3: Точная настройка */}
+                <div className="border border-[rgba(186,215,247,0.08)] bg-[rgba(5,6,15,0.2)] rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedGroups(prev => ({ ...prev, fineTuning: !prev.fineTuning }))}
+                    className="w-full flex items-center justify-between p-4 font-bold text-sm text-[var(--color-glacier)] hover:bg-[rgba(199,211,234,0.04)] transition-all"
+                  >
+                    <span className="flex items-center gap-2">
+                      <SlidersHorizontal className="h-4 w-4 text-[var(--color-electric-iris)]" />
+                      Точная настройка
+                    </span>
+                    <ChevronDown className={clsx("h-4 w-4 transition-transform text-[var(--color-fog)]", expandedGroups.fineTuning && "rotate-180")} />
+                  </button>
+                  {expandedGroups.fineTuning && (
+                    <div className="p-4 border-t border-[rgba(186,215,247,0.08)] grid grid-cols-1 md:grid-cols-2 gap-6 bg-[rgba(5,6,15,0.1)]">
+                      {/* Исключить слова */}
+                      <div className="md:col-span-2">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Исключить слова из поиска
+                        </label>
                         <input
-                          type="checkbox"
-                          checked={filters.preferences?.includes(pref) || false}
-                          onChange={() => {
-                            const current = filters.preferences || []
-                            const updated = current.includes(pref)
-                              ? current.filter(p => p !== pref)
-                              : [...current, pref]
-                            setFilters({ ...filters, preferences: updated.length > 0 ? updated : undefined })
+                          type="text"
+                          placeholder="Слова через запятую, например: поставка, обслуживание"
+                          value={excludeKeywords}
+                          onChange={(e) => setExcludeKeywords(e.target.value)}
+                          className="w-full px-3 py-2 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-xs text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
+                        />
+                      </div>
+
+                      {/* ОКПД2 */}
+                      <div className="md:col-span-2">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Коды ОКПД2 (через запятую)
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Например: 41.2, 42.11, 43.2"
+                          value={filters.okpd2_codes ? filters.okpd2_codes.join(', ') : ''}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            const codes = val ? val.split(',').map(c => c.trim()).filter(c => c) : undefined
+                            setFilters({ ...filters, okpd2_codes: codes })
                           }}
-                          className="h-4 w-4 text-[var(--color-frost-link)] rounded border-[var(--color-steel-border)] focus:ring-2 focus:ring-[var(--color-electric-iris)]"
+                          className="w-full px-3 py-2 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-xs text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
                         />
-                        <span className="text-sm text-[var(--color-moonlight)]">{pref}</span>
-                      </label>
-                    ))}
-                  </div>
+                      </div>
+
+                      {/* Дата публикации */}
+                      <div className="md:col-span-2">
+                        <label className="flex items-center gap-2 text-xs font-semibold text-[var(--color-moonlight)] mb-3">
+                          Дата публикации закупки
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="date"
+                            value={filters.published_from || ''}
+                            onChange={(e) => setFilters({ ...filters, published_from: e.target.value || undefined })}
+                            className="w-full px-3 py-1.5 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-xs text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
+                          />
+                          <span className="text-[var(--color-fog)] text-xs">—</span>
+                          <input
+                            type="date"
+                            value={filters.published_to || ''}
+                            onChange={(e) => setFilters({ ...filters, published_to: e.target.value || undefined })}
+                            className="w-full px-3 py-1.5 bg-[rgba(5,6,15,0.2)] border border-[var(--color-steel-border)] rounded-lg text-xs text-[var(--color-glacier)] focus:ring-2 focus:ring-[var(--color-electric-iris)] focus:border-transparent"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Кнопки действий */}
               <div className="flex items-center justify-between pt-4 border-t border-[rgba(186,215,247,0.12)]">
-                <div className="text-sm text-[var(--color-pebble)]">
+                <div className="text-xs text-[var(--color-pebble)]">
                   {activeFiltersCount > 0 ? (
                     <span>
                       Активных фильтров: <strong>{activeFiltersCount}</strong>
@@ -984,15 +1060,15 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setShowFilters(false)}
-                    className="px-4 py-2 text-[var(--color-moonlight)] hover:bg-[rgba(199,211,234,0.06)] rounded-lg transition-colors"
+                    className="px-4 py-2 text-xs text-[var(--color-moonlight)] hover:bg-[rgba(199,211,234,0.06)] rounded-lg transition-colors font-semibold"
                   >
                     Свернуть
                   </button>
                   <button
                     onClick={handleSearch}
-                    className="blueprint-button-primary px-6 py-2 font-medium"
+                    className="blueprint-button-primary px-6 py-2 text-xs font-bold"
                   >
-                    Применить
+                    Применить {activeFiltersCount > 0 ? `· ${activeFiltersCount} активных` : ''}
                   </button>
                 </div>
               </div>
@@ -1000,58 +1076,6 @@ export default function AdvancedSearch({ onSearch, initialFilters = {}, onForceS
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Активные фильтры (теги) */}
-      {activeFiltersCount > 0 && !showFilters && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {filters.regions && filters.regions.length > 0 && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 border border-[rgba(186,215,247,0.12)] bg-[rgba(199,211,234,0.06)] text-[var(--color-azure)] rounded-[var(--radius-badges)] text-sm">
-              <MapPin className="h-3 w-3" />
-              Регионов: {filters.regions.length}
-              <button onClick={() => setFilters({ ...filters, regions: undefined })} className="ml-1 hover:text-[var(--color-glacier)]">
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          )}
-          {filters.statuses?.map((status) => {
-            const statusOption = statusOptions.find(s => s.value === status)
-            return (
-              <span
-                key={status}
-                className={`inline-flex items-center gap-1 px-3 py-1 border border-[rgba(186,215,247,0.12)] rounded-[var(--radius-badges)] text-sm ${statusOption?.color}`}
-              >
-                {statusOption?.label}
-                <button onClick={() => toggleStatus(status)} className="ml-1 hover:text-[var(--color-glacier)]">
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )
-          })}
-          {(filters.price_from || filters.price_to) && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 border border-[rgba(186,215,247,0.12)] bg-[rgba(199,211,234,0.06)] text-[var(--color-cipher-mint)] rounded-[var(--radius-badges)] text-sm">
-              <DollarSign className="h-3 w-3" />
-              {filters.price_from && `от ${filters.price_from.toLocaleString()}`}
-              {filters.price_from && filters.price_to && ' '}
-              {filters.price_to && `до ${filters.price_to.toLocaleString()}`} ₽
-              <button
-                onClick={() => setFilters({ ...filters, price_from: undefined, price_to: undefined })}
-                className="ml-1 hover:text-[var(--color-glacier)]"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          )}
-          {filters.deadline_less_than_days && (
-            <span className="inline-flex items-center gap-1 px-3 py-1 border border-[rgba(186,215,247,0.12)] bg-[rgba(199,211,234,0.06)] text-[var(--color-ember-bright-soft)] rounded-[var(--radius-badges)] text-sm">
-              <Calendar className="h-3 w-3" />
-              Дедлайн &lt; {filters.deadline_less_than_days} дней
-              <button onClick={() => setFilters({ ...filters, deadline_less_than_days: undefined })} className="ml-1 hover:text-[var(--color-glacier)]">
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          )}
-        </div>
-      )}
 
       {/* Модальные окна */}
       <RegionModal
