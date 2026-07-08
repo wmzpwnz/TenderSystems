@@ -3,6 +3,7 @@
 """
 import httpx
 import json
+import re
 from typing import Dict, Optional, List
 from app.core.config import settings
 import logging
@@ -10,6 +11,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 ALLOWED_DEEPSEEK_MODELS = {"deepseek-v4-flash", "deepseek-v4-pro"}
+DOCUMENT_MARKER_PATTERN = re.compile(r"(?m)^===\s+.+?\s+===\s*$")
+SUMMARY_TOKEN_LIMITS = {
+    "quick": 1200,
+    "deep": 1800,
+}
+SUMMARY_COMPRESSION_ROUNDS = 3
 
 
 class DeepSeekClient:
@@ -31,10 +38,63 @@ class DeepSeekClient:
     def _get_model(self, analysis_type: str) -> str:
         return self.quick_model if analysis_type == "quick" else self.deep_model
 
-    def _prepare_documents_text(self, documents_text: str, limit: int, analysis_type: str) -> str:
+    async def _request_completion(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        model: str,
+        max_tokens: int,
+        temperature: float = 0.3,
+    ) -> str:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                self.api_url,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.api_key}"
+                },
+                json={
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": system_prompt,
+                        },
+                        {
+                            "role": "user",
+                            "content": user_prompt,
+                        }
+                    ],
+                    "temperature": temperature,
+                    "max_tokens": max_tokens
+                }
+            )
+
+        if response.status_code != 200:
+            raise RuntimeError(f"DeepSeek API error: {response.status_code} - {response.text}")
+
+        data = response.json()
+        return data.get("choices", [{}])[0].get("message", {}).get("content", "{}")
+
+    async def _prepare_documents_text(self, documents_text: str, limit: int, analysis_type: str) -> str:
         if len(documents_text) <= limit:
             return documents_text
 
+        try:
+            return await self._prepare_documents_text_with_chunking(
+                documents_text=documents_text,
+                limit=limit,
+                analysis_type=analysis_type,
+            )
+        except Exception as exc:
+            logger.warning(
+                "DeepSeek %s analysis chunking failed, falling back to truncation: %s",
+                analysis_type,
+                exc,
+            )
+            return self._truncate_documents_text(documents_text, limit, analysis_type)
+
+    def _truncate_documents_text(self, documents_text: str, limit: int, analysis_type: str) -> str:
         logger.warning(
             "DeepSeek %s analysis documents text truncated from %s to %s characters",
             analysis_type,
@@ -46,6 +106,228 @@ class DeepSeekClient:
             + f"\n\n[ВНИМАНИЕ: текст документов обрезан до {limit} символов из {len(documents_text)}. "
             "Анализ выполнен по части доступного текста.]"
         )
+
+    async def _prepare_documents_text_with_chunking(
+        self,
+        documents_text: str,
+        limit: int,
+        analysis_type: str,
+    ) -> str:
+        blocks = self._split_documents_text(documents_text)
+        if not blocks:
+            raise ValueError("No document blocks available for chunking")
+
+        chunks = self._pack_document_blocks(blocks, limit)
+        if not chunks:
+            raise ValueError("Unable to build document chunks")
+
+        summaries = []
+        for index, chunk in enumerate(chunks, start=1):
+            summaries.append(
+                await self._summarize_chunk_text(
+                    chunk_text=chunk,
+                    analysis_type=analysis_type,
+                    chunk_index=index,
+                    total_chunks=len(chunks),
+                    stage="document",
+                )
+            )
+
+        prepared_text = self._format_chunked_context(
+            summaries=summaries,
+            original_length=len(documents_text),
+            total_chunks=len(chunks),
+            compression_round=0,
+        )
+
+        compression_round = 0
+        while len(prepared_text) > limit:
+            compression_round += 1
+            if compression_round > SUMMARY_COMPRESSION_ROUNDS:
+                raise ValueError("Chunk summaries still exceed limit after compression")
+
+            summary_blocks = self._split_section_blocks(prepared_text)
+            summary_chunks = self._pack_text_blocks(
+                summary_blocks,
+                max(limit - 300, limit // 2),
+            )
+            if not summary_chunks:
+                raise ValueError("Unable to build summary compression chunks")
+
+            compressed_summaries = []
+            for index, chunk in enumerate(summary_chunks, start=1):
+                compressed_summaries.append(
+                    await self._summarize_chunk_text(
+                        chunk_text=chunk,
+                        analysis_type=analysis_type,
+                        chunk_index=index,
+                        total_chunks=len(summary_chunks),
+                        stage="compression",
+                    )
+                )
+
+            prepared_text = self._format_chunked_context(
+                summaries=compressed_summaries,
+                original_length=len(documents_text),
+                total_chunks=len(chunks),
+                compression_round=compression_round,
+            )
+
+        return prepared_text
+
+    def _split_documents_text(self, documents_text: str) -> List[str]:
+        matches = list(DOCUMENT_MARKER_PATTERN.finditer(documents_text))
+        if not matches:
+            return self._split_section_blocks(documents_text)
+
+        blocks: List[str] = []
+        preamble = documents_text[:matches[0].start()].strip()
+        if preamble:
+            blocks.extend(self._split_section_blocks(preamble))
+
+        for index, match in enumerate(matches):
+            start = match.start()
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(documents_text)
+            block = documents_text[start:end].strip()
+            if block:
+                blocks.append(block)
+
+        return blocks
+
+    def _split_section_blocks(self, text: str) -> List[str]:
+        sections = [section.strip() for section in re.split(r"\n\s*\n+", text) if section.strip()]
+        return sections or ([text.strip()] if text.strip() else [])
+
+    def _pack_document_blocks(self, blocks: List[str], limit: int) -> List[str]:
+        fitted_blocks: List[str] = []
+        for block in blocks:
+            fitted_blocks.extend(self._split_large_block(block, limit))
+        return self._pack_text_blocks(fitted_blocks, limit)
+
+    def _split_large_block(self, block: str, limit: int) -> List[str]:
+        if len(block) <= limit:
+            return [block]
+
+        lines = block.splitlines()
+        header = lines[0].strip() if lines and DOCUMENT_MARKER_PATTERN.match(lines[0]) else None
+        body = "\n".join(lines[1:]).strip() if header else block.strip()
+
+        body_budget = max(limit - (len(header) + 2 if header else 0), 400)
+        sections = self._split_section_blocks(body)
+        if len(sections) == 1 and len(sections[0]) == len(body):
+            body_chunks = self._split_text_by_length(body, body_budget)
+        else:
+            body_chunks = self._pack_text_blocks(sections, body_budget)
+
+        if header:
+            return [f"{header}\n{chunk}" for chunk in body_chunks if chunk.strip()]
+        return body_chunks
+
+    def _pack_text_blocks(self, blocks: List[str], limit: int) -> List[str]:
+        chunks: List[str] = []
+        current: List[str] = []
+        current_length = 0
+
+        for raw_block in blocks:
+            block = raw_block.strip()
+            if not block:
+                continue
+
+            oversized_parts = [block] if len(block) <= limit else self._split_text_by_length(block, limit)
+
+            for part in oversized_parts:
+                separator_length = 2 if current else 0
+                if current and current_length + separator_length + len(part) > limit:
+                    chunks.append("\n\n".join(current))
+                    current = [part]
+                    current_length = len(part)
+                else:
+                    current.append(part)
+                    current_length += separator_length + len(part)
+
+        if current:
+            chunks.append("\n\n".join(current))
+
+        return chunks
+
+    def _split_text_by_length(self, text: str, limit: int) -> List[str]:
+        text = text.strip()
+        if not text:
+            return []
+
+        parts: List[str] = []
+        remaining = text
+        while remaining:
+            if len(remaining) <= limit:
+                parts.append(remaining.strip())
+                break
+
+            split_at = remaining.rfind("\n", 0, limit)
+            if split_at < limit // 2:
+                split_at = remaining.rfind(" ", 0, limit)
+            if split_at < limit // 2:
+                split_at = limit
+
+            parts.append(remaining[:split_at].strip())
+            remaining = remaining[split_at:].strip()
+
+        return [part for part in parts if part]
+
+    async def _summarize_chunk_text(
+        self,
+        chunk_text: str,
+        analysis_type: str,
+        chunk_index: int,
+        total_chunks: int,
+        stage: str,
+    ) -> str:
+        model = self._get_model(analysis_type)
+        stage_label = "фрагмент документов" if stage == "document" else "сводку по фрагментам"
+        prompt = f"""
+Суммаризируй {stage_label} тендерной документации. Сохрани только факты, пригодные для финального анализа.
+
+ОБЯЗАТЕЛЬНО сохрани:
+- сроки и даты;
+- суммы, проценты, обеспечение, аванс;
+- требования к лицензиям, СРО, опыту, персоналу, оборудованию;
+- критерии оценки заявок;
+- риски, скрытые ограничения, штрафы, обеспечение;
+- материалы, объемы, сметные данные, если это стройка;
+- любые прямые запреты, ограничения, особенности допуска.
+
+ФРАГМЕНТ {chunk_index}/{total_chunks}:
+{chunk_text}
+
+Верни краткую фактологическую сводку без выдуманных выводов. Можно использовать маркеры и короткие списки.
+""".strip()
+
+        content = await self._request_completion(
+            system_prompt="Ты эксперт по тендерной документации. Сжимаешь документы без потери критически важных фактов.",
+            user_prompt=prompt,
+            model=model,
+            max_tokens=SUMMARY_TOKEN_LIMITS[analysis_type],
+            temperature=0.1,
+        )
+        return content.strip()
+
+    def _format_chunked_context(
+        self,
+        summaries: List[str],
+        original_length: int,
+        total_chunks: int,
+        compression_round: int,
+    ) -> str:
+        intro = f"[ВНИМАНИЕ: анализ выполнен по чанкам документов; объем={original_length}; чанков={total_chunks}"
+        if compression_round > 0:
+            intro += f"; компрессия={compression_round}"
+        intro += "]"
+
+        body = "\n\n".join(
+            f"[{index}/{len(summaries)}]\n{summary.strip()}"
+            for index, summary in enumerate(summaries, start=1)
+            if summary.strip()
+        )
+        return f"{intro}\n\n{body}".strip()
     
     async def analyze_tender_documents(
         self,
@@ -70,63 +352,46 @@ class DeepSeekClient:
         """
         
         model = self._get_model(analysis_type)
+        document_limit = 12000 if analysis_type == "quick" else 15000
+        prepared_documents_text = await self._prepare_documents_text(
+            documents_text=documents_text,
+            limit=document_limit,
+            analysis_type=analysis_type,
+        )
 
         if analysis_type == "quick":
             prompt = self._build_quick_analysis_prompt(
                 tender_title,
                 tender_description,
-                documents_text
+                prepared_documents_text
             )
             max_tokens = 2000  # Увеличиваем для более детального анализа
         else:
             prompt = self._build_deep_analysis_prompt(
                 tender_title,
                 tender_description,
-                documents_text
+                prepared_documents_text
             )
             max_tokens = 3000
         
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(
-                    self.api_url,
-                    headers={
-                        "Content-Type": "application/json",
-                        "Authorization": f"Bearer {self.api_key}"
-                    },
-                    json={
-                        "model": model,
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": "Ты эксперт по анализу тендерной документации в сфере госзакупок России. Твоя задача - структурированно анализировать документы закупок и выдавать информацию в формате JSON."
-                            },
-                            {
-                                "role": "user",
-                                "content": prompt
-                            }
-                        ],
-                        "temperature": 0.3,
-                        "max_tokens": max_tokens
-                    }
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    content = data.get("choices", [{}])[0].get("message", {}).get("content", "{}")
+            content = await self._request_completion(
+                system_prompt="Ты эксперт по анализу тендерной документации в сфере госзакупок России. Твоя задача - структурированно анализировать документы закупок и выдавать информацию в формате JSON.",
+                user_prompt=prompt,
+                model=model,
+                max_tokens=max_tokens,
+                temperature=0.3,
+            )
 
-                    # Парсим JSON ответ
-                    try:
-                        # Убираем markdown блоки если есть
-                        cleaned_content = self._clean_json_response(content)
-                        analysis = json.loads(cleaned_content)
-                        return analysis
-                    except json.JSONDecodeError:
-                        # Если ответ не JSON, пытаемся извлечь структурированную информацию
-                        return self._parse_text_response(content)
-                else:
-                    logger.error(f"DeepSeek API error: {response.status_code} - {response.text}")
-                    return self._get_default_analysis()
+            # Парсим JSON ответ
+            try:
+                # Убираем markdown блоки если есть
+                cleaned_content = self._clean_json_response(content)
+                analysis = json.loads(cleaned_content)
+                return analysis
+            except json.JSONDecodeError:
+                # Если ответ не JSON, пытаемся извлечь структурированную информацию
+                return self._parse_text_response(content)
         
         except Exception as e:
             logger.error(f"Error calling DeepSeek API: {e}")
@@ -139,13 +404,12 @@ class DeepSeekClient:
         documents_text: str
     ) -> str:
         """Промпт для поверхностного анализа (расширенный быстрый обзор)"""
-        prepared_documents_text = self._prepare_documents_text(documents_text, 12000, "quick")
         return f"""
 Проведи ПОВЕРХНОСТНЫЙ анализ тендера. Извлеки МАКСИМУМ информации из предоставленных документов.
 
 НАИМЕНОВАНИЕ: {title}
 ОПИСАНИЕ: {description}
-ДОКУМЕНТЫ: {prepared_documents_text}
+ДОКУМЕНТЫ: {documents_text}
 
 ВАЖНО: Внимательно изучи ВСЕ документы и извлеки ВСЕ доступные данные. Не пиши "нужно проверить", если информация есть в документах!
 
@@ -194,13 +458,12 @@ class DeepSeekClient:
         documents_text: str
     ) -> str:
         """Промпт для глубокого анализа (полный разбор)"""
-        prepared_documents_text = self._prepare_documents_text(documents_text, 15000, "deep")
         return f"""
 Проведи ГЛУБОКИЙ анализ тендера. Проанализируй ВСЕ аспекты для принятия решения об участии.
 
 НАИМЕНОВАНИЕ: {title}
 ОПИСАНИЕ: {description}
-ДОКУМЕНТЫ: {prepared_documents_text}
+ДОКУМЕНТЫ: {documents_text}
 
 Верни ТОЛЬКО JSON:
 {{
