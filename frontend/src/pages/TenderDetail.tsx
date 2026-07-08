@@ -249,7 +249,7 @@ export default function TenderDetail() {
             {/* Хлебные крошки и панель действий */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <nav className="flex items-center gap-2 text-sm text-[var(--color-fog)]">
-                    <Link to="/" className="hover:text-[var(--color-glacier)] transition-colors">Поиск тендеров</Link>
+                    <Link to="/dashboard" className="hover:text-[var(--color-glacier)] transition-colors">Поиск тендеров</Link>
                     <ChevronRight className="h-4 w-4" />
                     <span className="text-[var(--color-glacier)] font-medium truncate max-w-[200px] md:max-w-[400px]">
                         {tenderData.number || tenderData.eis_id}

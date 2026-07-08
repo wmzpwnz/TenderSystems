@@ -3,6 +3,7 @@ import Dashboard from './pages/Dashboard'
 import TenderDetail from './pages/TenderDetail'
 import CompanyProfile from './pages/CompanyProfile'
 import Layout from './components/Layout'
+import Landing from './pages/Landing'
 
 import { AuthProvider } from './context/AuthContext'
 import { Login } from './pages/Login'
@@ -21,8 +22,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Главная страница */}
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<Landing />} />
+          <Route path="/dashboard" element={<Dashboard />} />
 
           {/* Страницы с Layout */}
           <Route path="/tender/:id" element={<Layout><TenderDetail /></Layout>} />
@@ -34,5 +35,4 @@ function App() {
 }
 
 export default App
-
 

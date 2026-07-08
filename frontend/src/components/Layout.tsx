@@ -30,9 +30,9 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex items-center gap-6">
               <nav className="flex items-center space-x-2">
                 <Link
-                  to="/"
+                  to="/dashboard"
                   className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                    isActive('/')
+                    isActive('/dashboard')
                       ? 'blueprint-button-primary'
                       : 'blueprint-pill'
                   }`}
