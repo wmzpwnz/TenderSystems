@@ -155,6 +155,65 @@ def test_quick_analysis_cache_is_shared_between_users(client, db, users, tender,
     assert analyses[0].user_id == user_a.id
 
 
+def test_start_analysis_endpoint_reuses_shared_cache_between_users(
+    client,
+    db,
+    users,
+    tender,
+    monkeypatch,
+):
+    user_a, user_b = users
+    documents = [{"fileName": "tz.pdf", "url": "https://example.test/tz.pdf", "size": 100}]
+    tender.documents_data = documents
+    db.commit()
+    calls = {"deepseek": 0}
+
+    def fake_analyze_tender_task(tender_id: int, user_id=None):
+        calls["deepseek"] += 1
+        documents_hash, source_documents_count = analysis_module._documents_fingerprint(documents)
+        analysis = Analysis(
+            tender_id=tender_id,
+            user_id=user_id,
+            analysis_type="quick",
+            summary="cached background summary",
+            risks={"level": "medium"},
+            risk_level="medium",
+            margin_analysis={"profitability": "ok"},
+            win_probability=50,
+            documents_analyzed=[{
+                "filename": "tz.pdf",
+                "size": 100,
+                "text_length": 100,
+                "has_text": True,
+            }],
+            documents_hash=documents_hash,
+            source_documents_count=source_documents_count,
+            raw_ai_response={},
+        )
+        db.add(analysis)
+        db.commit()
+
+    monkeypatch.setattr(analysis_module, "analyze_tender_task", fake_analyze_tender_task)
+
+    first = client.post(
+        f"/api/v1/analysis/{tender.id}",
+        headers=_auth_headers(user_a),
+    )
+    second = client.post(
+        f"/api/v1/analysis/{tender.id}",
+        headers=_auth_headers(user_b),
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert calls["deepseek"] == 1
+    assert second.json()["summary"] == "cached background summary"
+
+    analyses = db.query(Analysis).filter(Analysis.tender_id == tender.id).all()
+    assert len(analyses) == 1
+    assert analyses[0].user_id == user_a.id
+
+
 def test_cached_response_recalculates_win_probability_without_mutating_row(
     client,
     db,

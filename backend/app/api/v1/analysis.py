@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 from decimal import Decimal
+from datetime import datetime, timezone
 import hashlib
 import json
 import logging
@@ -56,8 +57,20 @@ DOCUMENT_HASH_KEYS = (
     "fileSize",
     "publishDate",
     "publicationDate",
+    "createdAt",
+    "created_at",
     "updatedAt",
+    "updated_at",
     "version",
+)
+
+DOCUMENT_DATE_KEYS = (
+    "publishDate",
+    "publicationDate",
+    "createdAt",
+    "created_at",
+    "updatedAt",
+    "updated_at",
 )
 
 
@@ -88,11 +101,49 @@ def _documents_fingerprint(documents: Optional[list]) -> tuple[Optional[str], in
     return hashlib.sha256(payload.encode("utf-8")).hexdigest(), len(normalized)
 
 
+def _parse_document_datetime(value) -> Optional[datetime]:
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, str):
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    else:
+        return None
+
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
+
+
+def _has_document_newer_than_analysis(analysis: Analysis, documents: Optional[list]) -> bool:
+    if not analysis.created_at or not isinstance(documents, list):
+        return False
+
+    analysis_created_at = _parse_document_datetime(analysis.created_at)
+    if not analysis_created_at:
+        return False
+
+    for doc in documents:
+        if not isinstance(doc, dict):
+            continue
+        for key in DOCUMENT_DATE_KEYS:
+            document_datetime = _parse_document_datetime(doc.get(key))
+            if document_datetime and document_datetime > analysis_created_at:
+                return True
+
+    return False
+
+
 def _analysis_is_fresh(analysis: Analysis, tender: Tender) -> bool:
     current_hash, current_count = _documents_fingerprint(tender.documents_data)
 
     if current_count == 0:
         return True
+
+    if _has_document_newer_than_analysis(analysis, tender.documents_data):
+        return False
 
     if analysis.documents_hash:
         return analysis.documents_hash == current_hash

@@ -9,9 +9,54 @@ from app.services.deepseek_client import DeepSeekClient
 from app.services.document_processor import DocumentProcessor
 from app.services.eis_client import EISClient
 import asyncio
+import hashlib
+import json
 import logging
 
 logger = logging.getLogger(__name__)
+
+DOCUMENT_HASH_KEYS = (
+    "fileName",
+    "name",
+    "url",
+    "downloadUrl",
+    "size",
+    "fileSize",
+    "publishDate",
+    "publicationDate",
+    "createdAt",
+    "created_at",
+    "updatedAt",
+    "updated_at",
+    "version",
+)
+
+
+def _documents_fingerprint(documents: list | None) -> tuple[str | None, int]:
+    if not isinstance(documents, list) or not documents:
+        return None, 0
+
+    normalized = []
+    for doc in documents:
+        if isinstance(doc, dict):
+            doc_identity = {
+                key: str(doc[key])
+                for key in DOCUMENT_HASH_KEYS
+                if doc.get(key) is not None
+            }
+            if not doc_identity:
+                doc_identity = {
+                    key: str(value)
+                    for key, value in sorted(doc.items())
+                    if value is not None
+                }
+            normalized.append(doc_identity)
+        else:
+            normalized.append({"value": str(doc)})
+
+    normalized.sort(key=lambda item: json.dumps(item, ensure_ascii=False, sort_keys=True))
+    payload = json.dumps(normalized, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest(), len(normalized)
 
 
 @celery_app.task(name="analyze_tender")
@@ -50,9 +95,13 @@ async def _analyze_tender_async(tender_id: int, user_id: int | None = None):
         if not documents:
             logger.warning(f"No documents found for tender {tender_id}")
             return
+
+        tender.documents_data = documents
+        documents_hash, source_documents_count = _documents_fingerprint(documents)
         
         # Скачиваем и обрабатываем документы
         document_texts = []
+        documents_analyzed = []
         for doc in documents[:5]:
             doc_url = doc.get("url") or doc.get("downloadUrl")
             if doc_url:
@@ -62,6 +111,19 @@ async def _analyze_tender_async(tender_id: int, user_id: int | None = None):
                     text = await document_processor.extract_text(content, filename)
                     if text:
                         document_texts.append(text)
+                        documents_analyzed.append({
+                            "filename": filename,
+                            "size": len(content),
+                            "text_length": len(text),
+                            "has_text": True,
+                        })
+                    else:
+                        documents_analyzed.append({
+                            "filename": filename,
+                            "size": len(content),
+                            "text_length": 0,
+                            "has_text": False,
+                        })
         
         # Анализируем через DeepSeek
         all_documents_text = "\n\n".join(document_texts)
@@ -93,6 +155,9 @@ async def _analyze_tender_async(tender_id: int, user_id: int | None = None):
             margin_analysis=ai_analysis.get("margin_analysis", {}),
             win_probability=win_probability,
             risk_level=ai_analysis.get("risks", {}).get("level", "medium"),
+            documents_analyzed=documents_analyzed,
+            documents_hash=documents_hash,
+            source_documents_count=source_documents_count,
             raw_ai_response=ai_analysis
         )
         
