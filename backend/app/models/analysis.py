@@ -34,6 +34,8 @@ class Analysis(Base):
     analysis_version = Column(String(20), default="1.0")
     analysis_type = Column(String(20), default="quick")  # 'quick' или 'deep'
     documents_analyzed = Column(JSON)  # Список обработанных документов
+    documents_hash = Column(String(64), nullable=True)  # Хэш исходного набора документов
+    source_documents_count = Column(Integer, nullable=True)  # Количество документов в исходном наборе
     cost_breakdown = Column(JSON)  # Разбивка по позициям для глубокого анализа
     created_at = Column(DateTime, server_default=func.now())
     

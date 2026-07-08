@@ -4,12 +4,16 @@ API endpoints для AI-анализа тендеров
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from typing import Optional
+from decimal import Decimal
+import hashlib
+import json
 import logging
 
 from app.core.database import get_db
 from app.models.tender import Tender
 from app.models.analysis import Analysis
 from app.models.user import User
+from app.models.company_profile import CompanyProfile
 from app.services.deepseek_client import DeepSeekClient
 from app.services.document_processor import DocumentProcessor
 from app.services.eis_client import EISClient
@@ -43,6 +47,120 @@ def _normalize_risk_level(value: Optional[str]) -> str:
     return "medium"
 
 
+DOCUMENT_HASH_KEYS = (
+    "fileName",
+    "name",
+    "url",
+    "downloadUrl",
+    "size",
+    "fileSize",
+    "publishDate",
+    "publicationDate",
+    "updatedAt",
+    "version",
+)
+
+
+def _documents_fingerprint(documents: Optional[list]) -> tuple[Optional[str], int]:
+    if not isinstance(documents, list) or not documents:
+        return None, 0
+
+    normalized = []
+    for doc in documents:
+        if isinstance(doc, dict):
+            doc_identity = {
+                key: str(doc[key])
+                for key in DOCUMENT_HASH_KEYS
+                if doc.get(key) is not None
+            }
+            if not doc_identity:
+                doc_identity = {
+                    key: str(value)
+                    for key, value in sorted(doc.items())
+                    if value is not None
+                }
+            normalized.append(doc_identity)
+        else:
+            normalized.append({"value": str(doc)})
+
+    normalized.sort(key=lambda item: json.dumps(item, ensure_ascii=False, sort_keys=True))
+    payload = json.dumps(normalized, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest(), len(normalized)
+
+
+def _analysis_is_fresh(analysis: Analysis, tender: Tender) -> bool:
+    current_hash, current_count = _documents_fingerprint(tender.documents_data)
+
+    if current_count == 0:
+        return True
+
+    if analysis.documents_hash:
+        return analysis.documents_hash == current_hash
+
+    if analysis.source_documents_count is not None:
+        return analysis.source_documents_count == current_count
+
+    if isinstance(analysis.documents_analyzed, list):
+        return len(analysis.documents_analyzed) == current_count
+
+    return False
+
+
+def _find_cached_analysis(
+    db: Session,
+    tender: Tender,
+    analysis_type: Optional[str] = None,
+) -> Optional[Analysis]:
+    query = db.query(Analysis).filter(Analysis.tender_id == tender.id)
+    if analysis_type:
+        query = query.filter(Analysis.analysis_type == analysis_type)
+
+    for analysis in query.order_by(Analysis.created_at.desc()).all():
+        if _analysis_is_fresh(analysis, tender):
+            return analysis
+
+    return None
+
+
+def _build_company_profile_data(db: Session, user_id: int) -> Optional[dict]:
+    company_profile = db.query(CompanyProfile).filter(
+        CompanyProfile.user_id == user_id
+    ).first()
+
+    if not company_profile:
+        return None
+
+    return {
+        "okpd2_codes": company_profile.okpd2_codes or [],
+        "licenses": company_profile.licenses or [],
+        "region": company_profile.region,
+        "experience_contracts": company_profile.experience_contracts or 0,
+        "experience_sum": float(company_profile.experience_sum or 0),
+    }
+
+
+def _build_tender_probability_data(tender: Tender) -> dict:
+    return {
+        "okpd2_codes": tender.okpd2_codes or [],
+        "customer_region": tender.customer_region,
+        "requirements": tender.requirements or {},
+    }
+
+
+async def _build_cached_analysis_response(
+    analysis: Analysis,
+    tender: Tender,
+    db: Session,
+    current_user: User,
+) -> AnalysisResponse:
+    win_probability = await deepseek_client.calculate_win_probability(
+        tender_data=_build_tender_probability_data(tender),
+        company_profile=_build_company_profile_data(db, current_user.id),
+    )
+    response = AnalysisResponse.model_validate(analysis)
+    return response.model_copy(update={"win_probability": Decimal(str(win_probability))})
+
+
 @router.post("/{tender_id}", response_model=dict)
 async def analyze_tender(
     tender_id: int,
@@ -62,15 +180,16 @@ async def analyze_tender(
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
     
-    # Проверяем существующий анализ
+    # Проверяем существующий быстрый анализ, общий для всех пользователей
     if not force_reanalyze:
-        existing_analysis = db.query(Analysis).filter(
-            Analysis.tender_id == tender_id,
-            Analysis.user_id == current_user.id
-        ).order_by(Analysis.created_at.desc()).first()
-        
+        existing_analysis = _find_cached_analysis(db, tender, analysis_type="quick")
         if existing_analysis:
-            return AnalysisResponse.model_validate(existing_analysis)
+            return await _build_cached_analysis_response(
+                existing_analysis,
+                tender,
+                db,
+                current_user,
+            )
     
     # Запускаем анализ в фоне
     background_tasks.add_task(analyze_tender_task, tender_id, current_user.id)
@@ -91,10 +210,12 @@ async def get_analysis(
     """
     Получить результат анализа тендера
     """
-    analysis = db.query(Analysis).filter(
-        Analysis.tender_id == tender_id,
-        Analysis.user_id == current_user.id
-    ).order_by(Analysis.created_at.desc()).first()
+    tender = db.query(Tender).filter(Tender.id == tender_id).first()
+
+    if not tender:
+        raise HTTPException(status_code=404, detail="Tender not found")
+
+    analysis = _find_cached_analysis(db, tender)
     
     if not analysis:
         raise HTTPException(
@@ -102,7 +223,7 @@ async def get_analysis(
             detail="Analysis not found. Start analysis first."
         )
     
-    return AnalysisResponse.model_validate(analysis)
+    return await _build_cached_analysis_response(analysis, tender, db, current_user)
 
 
 @router.post("/quick/{tender_id}", response_model=AnalysisResponse)
@@ -110,6 +231,7 @@ async def get_analysis(
 async def quick_analyze_tender(
     request: Request,
     tender_id: int,
+    force_reanalyze: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_active_subscription)
 ):
@@ -123,22 +245,41 @@ async def quick_analyze_tender(
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
 
+    if not force_reanalyze:
+        cached_analysis = _find_cached_analysis(db, tender, analysis_type="quick")
+        if cached_analysis:
+            return await _build_cached_analysis_response(
+                cached_analysis,
+                tender,
+                db,
+                current_user,
+            )
+
     try:
-        # Получаем профиль компании для сравнения
-        from app.models.company_profile import CompanyProfile
-        company_profile = db.query(CompanyProfile).filter(
-            CompanyProfile.user_id == current_user.id
-        ).first()
-        
         # Собираем базовую информацию из БД
         tender_info = _build_tender_info(tender)
         
         # Скачиваем больше документов для лучшего анализа
         documents_text = ""
         documents_analyzed = []
+        documents_hash, source_documents_count = _documents_fingerprint(tender.documents_data)
         
         try:
             eis_documents = await eis_client.get_tender_documents(tender.eis_id)
+            if eis_documents is not None:
+                tender.documents_data = eis_documents
+                documents_hash, source_documents_count = _documents_fingerprint(eis_documents)
+
+            if not force_reanalyze:
+                cached_analysis = _find_cached_analysis(db, tender, analysis_type="quick")
+                if cached_analysis:
+                    return await _build_cached_analysis_response(
+                        cached_analysis,
+                        tender,
+                        db,
+                        current_user,
+                    )
+
             if eis_documents:
                 logger.info(f"Found {len(eis_documents)} documents for quick analysis")
                 
@@ -219,23 +360,9 @@ async def quick_analyze_tender(
             analysis_type="quick"
         )
 
-        # Рассчитываем вероятность победы с учетом профиля
-        company_data = None
-        if company_profile:
-            company_data = {
-                "okpd2_codes": company_profile.okpd2_codes or [],
-                "licenses": company_profile.licenses or [],
-                "region": company_profile.region,
-                "experience_contracts": company_profile.experience_contracts or 0
-            }
-        
         win_probability = await deepseek_client.calculate_win_probability(
-            tender_data={
-                "okpd2_codes": tender.okpd2_codes or [],
-                "customer_region": tender.customer_region,
-                "requirements": tender.requirements or {}
-            },
-            company_profile=company_data
+            tender_data=_build_tender_probability_data(tender),
+            company_profile=_build_company_profile_data(db, current_user.id)
         )
 
         # Сохраняем анализ в БД
@@ -263,6 +390,8 @@ async def quick_analyze_tender(
                 ai_analysis.get("quick_assessment", {}).get("complexity")
             ),
             documents_analyzed=documents_analyzed,
+            documents_hash=documents_hash,
+            source_documents_count=source_documents_count,
             raw_ai_response=ai_analysis
         )
 
@@ -295,6 +424,7 @@ async def quick_analyze_tender(
 async def deep_analyze_tender(
     request: Request,
     tender_id: int,
+    force_reanalyze: bool = False,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_active_subscription)
 ):
@@ -308,22 +438,41 @@ async def deep_analyze_tender(
     if not tender:
         raise HTTPException(status_code=404, detail="Tender not found")
 
+    if not force_reanalyze:
+        cached_analysis = _find_cached_analysis(db, tender, analysis_type="deep")
+        if cached_analysis:
+            return await _build_cached_analysis_response(
+                cached_analysis,
+                tender,
+                db,
+                current_user,
+            )
+
     try:
-        # Получаем профиль компании
-        from app.models.company_profile import CompanyProfile
-        company_profile = db.query(CompanyProfile).filter(
-            CompanyProfile.user_id == current_user.id
-        ).first()
-        
         # Собираем базовую информацию
         tender_info = _build_tender_info(tender)
         
         # Скачиваем ВСЕ документы
         documents_text = ""
         documents_analyzed = []
+        documents_hash, source_documents_count = _documents_fingerprint(tender.documents_data)
         
         try:
             eis_documents = await eis_client.get_tender_documents(tender.eis_id)
+            if eis_documents is not None:
+                tender.documents_data = eis_documents
+                documents_hash, source_documents_count = _documents_fingerprint(eis_documents)
+
+            if not force_reanalyze:
+                cached_analysis = _find_cached_analysis(db, tender, analysis_type="deep")
+                if cached_analysis:
+                    return await _build_cached_analysis_response(
+                        cached_analysis,
+                        tender,
+                        db,
+                        current_user,
+                    )
+
             if eis_documents:
                 logger.info(f"Downloading {len(eis_documents)} documents for deep analysis")
                 
@@ -376,24 +525,9 @@ async def deep_analyze_tender(
             analysis_type="deep"
         )
 
-        # Рассчитываем вероятность победы с учетом профиля
-        company_data = None
-        if company_profile:
-            company_data = {
-                "okpd2_codes": company_profile.okpd2_codes or [],
-                "licenses": company_profile.licenses or [],
-                "region": company_profile.region,
-                "experience_contracts": company_profile.experience_contracts or 0,
-                "experience_sum": float(company_profile.experience_sum or 0)
-            }
-        
         win_probability = await deepseek_client.calculate_win_probability(
-            tender_data={
-                "okpd2_codes": tender.okpd2_codes or [],
-                "customer_region": tender.customer_region,
-                "requirements": tender.requirements or {}
-            },
-            company_profile=company_data
+            tender_data=_build_tender_probability_data(tender),
+            company_profile=_build_company_profile_data(db, current_user.id)
         )
 
         # Извлекаем разбивку по позициям из финансового анализа
@@ -422,6 +556,8 @@ async def deep_analyze_tender(
             win_probability=win_probability,
             risk_level=_normalize_risk_level(ai_analysis.get("risks", {}).get("level")),
             documents_analyzed=documents_analyzed,
+            documents_hash=documents_hash,
+            source_documents_count=source_documents_count,
             cost_breakdown=cost_breakdown,
             raw_ai_response=ai_analysis
         )
@@ -478,7 +614,6 @@ async def calculate_profitability(
     if cost is None:
         analysis = db.query(Analysis).filter(
             Analysis.tender_id == tender_id,
-            Analysis.user_id == current_user.id,
             Analysis.analysis_type == "deep"
         ).order_by(Analysis.created_at.desc()).first()
         
@@ -577,8 +712,7 @@ async def export_analysis_pdf(
         raise HTTPException(status_code=404, detail="Tender not found")
     
     analysis = db.query(Analysis).filter(
-        Analysis.tender_id == tender_id,
-        Analysis.user_id == current_user.id
+        Analysis.tender_id == tender_id
     ).order_by(Analysis.created_at.desc()).first()
     
     if not analysis:
