@@ -9,6 +9,7 @@ import logging
 
 from app.core.database import get_db
 from app.models.tender import Tender
+from app.models.analysis import Analysis
 from app.services.eis_client import EISClient
 from app.services.competitor_service import competitor_service
 from app.schemas.tender import TenderResponse, TenderListResponse, TenderCreate, TenderFilter
@@ -18,6 +19,54 @@ from app.api.deps import get_current_user, require_active_subscription
 
 router = APIRouter()
 eis_client = EISClient()
+
+
+def _enrich_tender_items_from_db(items: list, db: Session, user_id: int) -> None:
+    eis_ids = [
+        item.get("eis_id")
+        for item in items
+        if isinstance(item, dict) and item.get("eis_id")
+    ]
+    if not eis_ids:
+        return
+
+    fav_data = db.query(Tender.eis_id, UserTender.status).join(
+        UserTender, Tender.id == UserTender.tender_id
+    ).filter(
+        UserTender.user_id == user_id,
+        Tender.eis_id.in_(eis_ids),
+    ).all()
+    fav_map = {eis_id: status for eis_id, status in fav_data}
+
+    analysis_data = db.query(Tender.eis_id, Analysis).join(
+        Analysis, Tender.id == Analysis.tender_id
+    ).filter(
+        Tender.eis_id.in_(eis_ids),
+    ).order_by(Tender.eis_id, Analysis.id.desc()).all()
+
+    analysis_map = {}
+    for eis_id, analysis in analysis_data:
+        if eis_id not in analysis_map:
+            analysis_map[eis_id] = analysis
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        eis_id = item.get("eis_id")
+        if eis_id in fav_map:
+            item["is_favorite"] = True
+            item["crm_status"] = fav_map[eis_id]
+        else:
+            item["is_favorite"] = False
+            item["crm_status"] = None
+
+        analysis = analysis_map.get(eis_id)
+        if analysis:
+            item["is_analyzed"] = True
+            item["analysis_risk_level"] = analysis.risk_level
+            item["analysis_summary"] = analysis.summary
+            item["analysis_margin_analysis"] = analysis.margin_analysis
 
 
 @router.get("/customer/{inn}/intelligence", response_model=dict)
@@ -43,23 +92,10 @@ async def search_tenders(
     """
     result = await eis_client.search_tenders(filters)
     
-    # Обогащаем результаты информацией об избранном
+    # Обогащаем результаты информацией из локальной БД
     items = result.get("items", [])
     if items:
-        fav_data = db.query(Tender.eis_id, UserTender.status).join(
-            UserTender, Tender.id == UserTender.tender_id
-        ).filter(UserTender.user_id == current_user.id).all()
-        
-        fav_map = {f.eis_id: f.status for f in fav_data}
-        
-        for item in items:
-            eis_id = item.get("eis_id")
-            if eis_id in fav_map:
-                item["is_favorite"] = True
-                item["crm_status"] = fav_map[eis_id]
-            else:
-                item["is_favorite"] = False
-                item["crm_status"] = None
+        _enrich_tender_items_from_db(items, db, current_user.id)
                 
     return result
 

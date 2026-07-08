@@ -2,7 +2,7 @@
 Pydantic схемы для тендеров
 """
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Union
+from typing import Any, Optional, List, Dict, Union
 from datetime import datetime, date
 from decimal import Decimal
 
@@ -130,4 +130,3 @@ class TenderFilter(BaseModel):
     prepayment_type: Optional[str] = None  # Тип авансирования
     preferences: Optional[List[str]] = None  # Преимущества (СМП/СОНКО и т.д.)
     procedure_types: Optional[List[str]] = None  # Способ отбора
-
