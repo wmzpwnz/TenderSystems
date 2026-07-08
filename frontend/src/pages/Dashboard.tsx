@@ -138,18 +138,18 @@ export default function DashboardNew() {
     refetchInterval: 60000, // Обновляем каждую минуту
   })
 
-  // Запрос избранных для CRM вкладки
+  // Запрос избранных для CRM вкладки (всегда включен для расчета статистики)
   const { data: favoritesData, isLoading: isFavLoading } = useQuery({
     queryKey: ['favorites'],
     queryFn: () => crmApi.getFavorites(),
-    enabled: activeTab === 'favorites' && Boolean(user?.has_active_subscription)
+    enabled: Boolean(user?.has_active_subscription)
   })
 
-  // Запрос подписок
+  // Запрос подписок (всегда включен для расчета статистики)
   const { data: subscriptionsData, isLoading: isSubLoading, refetch: refetchSubs } = useQuery({
     queryKey: ['subscriptions'],
     queryFn: () => subscriptionsApi.list(),
-    enabled: activeTab === 'subscriptions' && Boolean(user?.has_active_subscription)
+    enabled: Boolean(user?.has_active_subscription)
   })
 
   // Рассчитываем количество тендеров с близким дедлайном
@@ -163,6 +163,72 @@ export default function DashboardNew() {
 
   // Рассчитываем количество проанализированных AI
   const analyzedCount = data?.items?.filter(tender => tender.is_analyzed).length || 0
+
+  // Количество непросмотренных во "Все"
+  const unviewedAllCount = data?.items?.filter(tender => !viewedTenders.includes(String(tender.id))).length || 0
+
+  // Ближайшие дедлайны (3 дня)
+  const getCloseDeadlinesCount = () => {
+    const now = new Date()
+    const allTenders = [
+      ...(data?.items || []),
+      ...(favoritesData || [])
+    ]
+    const seen = new Set()
+    const uniqueTenders = allTenders.filter(t => {
+      const id = t.eis_id || t.id
+      if (seen.has(id)) return false
+      seen.add(id)
+      return true
+    })
+
+    return uniqueTenders.filter(t => {
+      if (!t.application_deadline) return false
+      try {
+        let deadline = new Date(t.application_deadline)
+        if (t.application_deadline.includes('.')) {
+          const [d, m, y] = t.application_deadline.split('.')
+          deadline = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+        }
+        const diff = deadline.getTime() - now.getTime()
+        return diff >= 0 && diff <= 3 * 24 * 60 * 60 * 1000
+      } catch {
+        return false
+      }
+    }).length
+  }
+
+  // Количество новых тендеров (опубликованы за последние 48 часов)
+  const getNewTendersCount = () => {
+    if (!data?.items) return 0
+    const now = new Date()
+    return data.items.filter(t => {
+      if (!t.publication_date) return false
+      try {
+        let pubDate = new Date(t.publication_date)
+        if (t.publication_date.includes('.')) {
+          const [d, m, y] = t.publication_date.split('.')
+          pubDate = new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+        }
+        const diff = now.getTime() - pubDate.getTime()
+        return diff >= 0 && diff <= 2 * 24 * 60 * 60 * 1000
+      } catch {
+        return false
+      }
+    }).length
+  }
+
+  // Применить пресет и запустить поиск
+  const handleApplyPreset = (presetFilters: any) => {
+    setSearchFilters(presetFilters)
+    setCurrentPage(1)
+    queryClient.removeQueries({ queryKey: ['tenders-live-search'] })
+    setSearchTimestamp(Date.now())
+    setHasSearched(true)
+    requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   // Генерация диапазона страниц для пагинации
   const getPageRange = () => {
@@ -392,17 +458,82 @@ export default function DashboardNew() {
       {/* Результаты поиска */}
       <main ref={resultsRef} className="mx-auto max-w-[var(--page-max-width)] px-4 sm:px-6 lg:px-8 py-8">
 
+        {/* Верхняя строка-брифинг */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
+          {/* Блок 1: Новые по фильтрам */}
+          <div className="blueprint-panel p-4 flex items-center justify-between border border-[rgba(186,215,247,0.08)] bg-[rgba(5,6,15,0.2)] rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className="blueprint-icon-tile h-10 w-10 flex items-center justify-center rounded-lg bg-[rgba(199,211,234,0.06)]">
+                <Bell className="h-5 w-5 text-[var(--color-frost-link)]" />
+              </div>
+              <div>
+                <p className="blueprint-eyebrow text-[9px] mb-0.5">Поиск & Фильтры</p>
+                <h4 className="text-sm font-bold text-[var(--color-glacier)]">Новые по фильтрам</h4>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-2xl font-black text-[var(--color-frost-link)]">
+                {hasSearched ? getNewTendersCount() : 0}
+              </span>
+              <p className="text-[10px] text-[var(--color-fog)]">за 48ч</p>
+            </div>
+          </div>
+
+          {/* Блок 2: Дедлайны */}
+          <div className="blueprint-panel p-4 flex items-center justify-between border border-[rgba(186,215,247,0.08)] bg-[rgba(5,6,15,0.2)] rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className="blueprint-icon-tile h-10 w-10 flex items-center justify-center rounded-lg bg-[rgba(199,211,234,0.06)]">
+                <Clock className="h-5 w-5 text-[var(--color-ember-bright)]" />
+              </div>
+              <div>
+                <p className="blueprint-eyebrow text-[9px] mb-0.5">Срочность</p>
+                <h4 className="text-sm font-bold text-[var(--color-glacier)]">Дедлайны &le; 3 дней</h4>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-2xl font-black text-[var(--color-ember-bright)]">
+                {getCloseDeadlinesCount()}
+              </span>
+              <p className="text-[10px] text-[var(--color-fog)]">закупки</p>
+            </div>
+          </div>
+
+          {/* Блок 3: Не проанализировано */}
+          <div className="blueprint-panel p-4 flex items-center justify-between border border-[rgba(186,215,247,0.08)] bg-[rgba(5,6,15,0.2)] rounded-xl">
+            <div className="flex items-center gap-3">
+              <div className="blueprint-icon-tile h-10 w-10 flex items-center justify-center rounded-lg bg-[rgba(199,211,234,0.06)]">
+                <Sparkles className="h-5 w-5 text-[var(--color-premium-gold)]" />
+              </div>
+              <div>
+                <p className="blueprint-eyebrow text-[9px] mb-0.5">Избранное</p>
+                <h4 className="text-sm font-bold text-[var(--color-glacier)]">Не проанализировано</h4>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-2xl font-black text-[var(--color-premium-gold)]">
+                {favoritesData ? (favoritesData as any[]).filter((t: any) => !t.is_analyzed).length : 0}
+              </span>
+              <p className="text-[10px] text-[var(--color-fog)]">без отчета</p>
+            </div>
+          </div>
+        </div>
+
         <div className="mt-12 flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
             <div className="flex items-center gap-4 mb-3 border-b border-[rgba(186,215,247,0.12)]">
               <button
                 onClick={() => setActiveTab('all')}
                 className={clsx(
-                  "text-lg font-semibold transition-all px-2 py-3 -mb-[1px]",
+                  "text-lg font-semibold transition-all flex items-center gap-2 px-2 py-3 -mb-[1px]",
                   activeTab === 'all' ? "text-[var(--color-glacier)] border-b-2 border-[var(--color-frost-link)]" : "text-[var(--color-fog)] hover:text-[var(--color-moonlight)]"
                 )}
               >
                 Все тендеры
+                {hasSearched && unviewedAllCount > 0 && (
+                  <span className="bg-[rgba(186,215,247,0.18)] text-[var(--color-frost-link)] text-xs font-bold rounded-md h-6 px-2 flex items-center justify-center">
+                    {unviewedAllCount}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setActiveTab('favorites')}
@@ -529,10 +660,69 @@ export default function DashboardNew() {
             </div>
           ) : activeTab === 'all' ? (
             !hasSearched ? (
-              <div className="blueprint-card py-20 text-center border-dashed">
-                <Search className="h-16 w-16 text-[var(--color-fog)] mx-auto mb-4" />
-                <h3 className="blueprint-heading text-xl mb-2">Настройте фильтры и нажмите "Применить"</h3>
-                <p className="text-[var(--color-fog)]">Список тендеров появится после выполнения поиска</p>
+              <div className="blueprint-card py-16 px-6 text-center border-dashed">
+                <Search className="h-14 w-14 text-[var(--color-fog)] mx-auto mb-5" />
+                <h3 className="blueprint-heading text-xl mb-2">Настройте фильтры или выберите быстрый пресет</h3>
+                <p className="text-[var(--color-fog)] mb-8 max-w-md mx-auto text-sm">
+                  Чтобы начать работу, настройте фильтры в панели выше или запустите поиск по одному из популярных сценариев:
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+                  {/* Пресет 1 */}
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset({
+                      query: 'строительство',
+                      regions: ['Москва', 'Московская область'],
+                      price_from: 5000000,
+                      procurement_types: ['44-ФЗ', '223-ФЗ']
+                    })}
+                    className="blueprint-panel p-5 text-left border border-[rgba(186,215,247,0.08)] bg-[rgba(5,6,15,0.2)] hover:border-[var(--color-frost-link)] transition-all rounded-xl cursor-pointer group"
+                  >
+                    <h4 className="font-bold text-sm text-[var(--color-glacier)] group-hover:text-[var(--color-frost-link)] transition-colors mb-2">
+                      🏗️ Стройка
+                    </h4>
+                    <p className="text-xs text-[var(--color-fog)] leading-relaxed">
+                      Строительство и реконструкция в Москве и МО от 5 млн ₽ (44/223-ФЗ)
+                    </p>
+                  </button>
+
+                  {/* Пресет 2 */}
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset({
+                      query: 'поставка оборудования',
+                      price_from: 1000000,
+                      procurement_types: ['44-ФЗ', '223-ФЗ']
+                    })}
+                    className="blueprint-panel p-5 text-left border border-[rgba(186,215,247,0.08)] bg-[rgba(5,6,15,0.2)] hover:border-[var(--color-frost-link)] transition-all rounded-xl cursor-pointer group"
+                  >
+                    <h4 className="font-bold text-sm text-[var(--color-glacier)] group-hover:text-[var(--color-frost-link)] transition-colors mb-2">
+                      📦 Оборудование
+                    </h4>
+                    <p className="text-xs text-[var(--color-fog)] leading-relaxed">
+                      Поставка и закупка различного оборудования по всей РФ от 1 млн ₽
+                    </p>
+                  </button>
+
+                  {/* Пресет 3 */}
+                  <button
+                    type="button"
+                    onClick={() => handleApplyPreset({
+                      query: 'программное обеспечение',
+                      price_from: 2000000,
+                      procurement_types: ['44-ФЗ', '223-ФЗ', 'Коммерческие']
+                    })}
+                    className="blueprint-panel p-5 text-left border border-[rgba(186,215,247,0.08)] bg-[rgba(5,6,15,0.2)] hover:border-[var(--color-frost-link)] transition-all rounded-xl cursor-pointer group"
+                  >
+                    <h4 className="font-bold text-sm text-[var(--color-glacier)] group-hover:text-[var(--color-frost-link)] transition-colors mb-2">
+                      💻 IT & Софт
+                    </h4>
+                    <p className="text-xs text-[var(--color-fog)] leading-relaxed">
+                      Разработка ПО, поддержка IT-инфраструктуры от 2 млн ₽
+                    </p>
+                  </button>
+                </div>
               </div>
             ) : data?.items && data.items.length > 0 ? (
               <div className="grid grid-cols-1 gap-4">

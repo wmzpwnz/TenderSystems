@@ -69,6 +69,9 @@ export interface Tender {
   created_at: string
   updated_at: string
   url?: string // URL для Live Search тендеров (внешняя ссылка на zakupki.gov.ru)
+  analysis_risk_level?: string | null
+  analysis_summary?: string | null
+  analysis_margin_analysis?: any
 }
 
 export interface Analysis {

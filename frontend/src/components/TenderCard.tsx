@@ -1,9 +1,8 @@
-import { Tender } from '../api/client'
+import { Tender, crmApi, analysisApi } from '../api/client'
 import { format } from 'date-fns'
 import { Calendar, MapPin, ArrowRight, Sparkles, AlertCircle, Package, ExternalLink, Building2, X, DollarSign, Heart } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { crmApi } from '../api/client'
 import clsx from 'clsx'
 
 interface TenderCardProps {
@@ -22,6 +21,58 @@ export default function TenderCard({ tender, onClick, isViewed }: TenderCardProp
       queryClient.invalidateQueries({ queryKey: ['favorites'] })
     }
   })
+
+  const quickAnalyzeMutation = useMutation({
+    mutationFn: () => analysisApi.analyze(tender.id, 'quick'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenders'] })
+      queryClient.invalidateQueries({ queryKey: ['favorites'] })
+    }
+  })
+
+  const getAiVerdict = () => {
+    if (!tender.is_analyzed) return null
+
+    // 1. Risk level mapping
+    let riskStr = ''
+    const r = tender.analysis_risk_level?.toLowerCase()
+    if (r === 'high') {
+      riskStr = '🔴 Высокий риск'
+    } else if (r === 'medium') {
+      riskStr = '🟡 Средний риск'
+    } else if (r === 'low') {
+      riskStr = '🟢 Низкий риск'
+    } else {
+      riskStr = '✨ Проанализировано'
+    }
+
+    // 2. Margin formatting
+    let marginStr = ''
+    if (tender.analysis_margin_analysis) {
+      if (typeof tender.analysis_margin_analysis === 'string') {
+        marginStr = tender.analysis_margin_analysis
+      } else if (typeof tender.analysis_margin_analysis === 'object') {
+        const entries = Object.entries(tender.analysis_margin_analysis)
+        const marginEntry = entries.find(([k]) => k.toLowerCase().includes('марж') || k.toLowerCase().includes('рентаб') || k.toLowerCase().includes('чист')) || entries[0]
+        if (marginEntry) {
+          marginStr = `${marginEntry[0]}: ${marginEntry[1]}`
+        }
+      }
+    }
+
+    // 3. Summary formatting
+    let summaryStr = tender.analysis_summary || ''
+    if (summaryStr.length > 80) {
+      summaryStr = summaryStr.substring(0, 77) + '...'
+    }
+
+    // Build parts
+    const parts = [riskStr]
+    if (marginStr) parts.push(marginStr)
+    if (summaryStr) parts.push(summaryStr)
+
+    return parts.join(' · ')
+  }
 
   const formatPrice = (price: number | null) => {
     if (!price) return 'Не указана'
@@ -55,9 +106,9 @@ export default function TenderCard({ tender, onClick, isViewed }: TenderCardProp
   const tenderType = priceVal > 10000000 ? 'large' : priceVal > 1000000 ? 'medium' : 'small'
 
   const typeColors = {
-    large: 'border-l-[var(--color-electric-iris)]',
-    medium: 'border-l-[var(--color-azure)]',
-    small: 'border-l-[var(--color-cipher-mint)]'
+    large: 'border-l-[var(--color-frost-link)]',
+    medium: 'border-l-[var(--color-moonlight)]',
+    small: 'border-l-[var(--color-fog)]'
   }
 
   const getStatusDisplay = (status: string | null) => {
@@ -138,9 +189,9 @@ export default function TenderCard({ tender, onClick, isViewed }: TenderCardProp
     >
       <div className={clsx(
         "w-1.5 flex-shrink-0",
-        tenderType === 'large' ? 'bg-[var(--color-electric-iris)]' :
-          tenderType === 'medium' ? 'bg-[var(--color-azure)]' :
-            tenderType === 'small' ? 'bg-[var(--color-cipher-mint)]' : 'bg-[rgba(199,211,234,0.18)]'
+        tenderType === 'large' ? 'bg-[var(--color-frost-link)]' :
+          tenderType === 'medium' ? 'bg-[var(--color-moonlight)]' :
+            tenderType === 'small' ? 'bg-[var(--color-fog)]' : 'bg-[rgba(199,211,234,0.18)]'
       )} />
 
       <div className="flex flex-col md:flex-row flex-1 min-w-0">
@@ -156,11 +207,24 @@ export default function TenderCard({ tender, onClick, isViewed }: TenderCardProp
               )}>
                 {getStatusDisplay(tender.status)}
               </span>
-              {tender.is_analyzed && (
-                <span className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-[var(--color-electric-iris)] text-white rounded-md">
-                  <Sparkles className="h-3 w-3" />
-                  AI Анализ
+              {tender.is_analyzed ? (
+                <span className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold bg-[rgba(186,215,247,0.06)] border border-[rgba(186,215,247,0.12)] text-[var(--color-glacier)] rounded-md">
+                  <Sparkles className="h-3 w-3 text-[var(--color-premium-gold)]" />
+                  {getAiVerdict()}
                 </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    quickAnalyzeMutation.mutate()
+                  }}
+                  disabled={quickAnalyzeMutation.isPending}
+                  className="flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-bold bg-[rgba(199,211,234,0.08)] hover:bg-[var(--color-electric-iris)] text-[var(--color-frost-link)] hover:text-white rounded-md border border-[rgba(186,215,247,0.12)] transition-colors active:scale-95 disabled:opacity-50"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  {quickAnalyzeMutation.isPending ? 'Анализ...' : 'Быстрый анализ'}
+                </button>
               )}
               {isViewed && (
                 <span className="text-[9px] font-bold text-[var(--color-fog)] uppercase tracking-widest ml-auto">
@@ -199,30 +263,56 @@ export default function TenderCard({ tender, onClick, isViewed }: TenderCardProp
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            {tender.procedure_type && (
-              <span className="blueprint-status text-[10px] px-2 py-1 font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
-                {tender.procedure_type}
-              </span>
-            )}
-            {tender.platform && (
-              <span className="blueprint-status text-[10px] px-2 py-1 font-bold flex items-center gap-1">
-                <ExternalLink className="h-3 w-3" />
-                {tender.platform}
-              </span>
-            )}
-            {formatPrepayment(tender.prepayment_type) && (
-              <span className="blueprint-status text-[10px] px-2 py-1 font-medium">
-                {formatPrepayment(tender.prepayment_type)}
-              </span>
-            )}
-            {tender.preferences?.some(p => p.includes('СМП') || p.includes('СОНКО')) && (
-              <span className="blueprint-status text-[10px] px-2 py-1 font-bold flex items-center gap-1">
-                <Package className="h-3 w-3" />
-                СМП / СОНКО
-              </span>
-            )}
-          </div>
+          {(() => {
+            const tags = []
+            if (tender.procedure_type) {
+              tags.push(
+                <span key="proc" className="blueprint-status text-[10px] px-2 py-1 font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
+                  {tender.procedure_type}
+                </span>
+              )
+            }
+            if (tender.platform) {
+              tags.push(
+                <span key="plat" className="blueprint-status text-[10px] px-2 py-1 font-bold flex items-center gap-1">
+                  <ExternalLink className="h-3 w-3" />
+                  {tender.platform}
+                </span>
+              )
+            }
+            const prep = formatPrepayment(tender.prepayment_type)
+            if (prep) {
+              tags.push(
+                <span key="prep" className="blueprint-status text-[10px] px-2 py-1 font-medium">
+                  {prep}
+                </span>
+              )
+            }
+            if (tender.preferences?.some(p => p.includes('СМП') || p.includes('СОНКО'))) {
+              tags.push(
+                <span key="smp" className="blueprint-status text-[10px] px-2 py-1 font-bold flex items-center gap-1">
+                  <Package className="h-3 w-3" />
+                  СМП / СОНКО
+                </span>
+              )
+            }
+
+            if (tags.length === 0) return null
+
+            const visibleTags = tags.slice(0, 2)
+            const remainingCount = tags.length - 2
+
+            return (
+              <div className="mt-5 flex items-center gap-2 flex-wrap">
+                {visibleTags}
+                {remainingCount > 0 && (
+                  <span className="blueprint-status text-[10px] px-2 py-1 font-bold bg-[rgba(199,211,234,0.06)] text-[var(--color-fog)]">
+                    +{remainingCount}
+                  </span>
+                )}
+              </div>
+            )
+          })()}
         </div>
 
         <div className="flex-1 p-5 bg-[rgba(5,6,15,0.28)] flex flex-col justify-between items-end relative overflow-hidden min-w-[220px]">
