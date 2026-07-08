@@ -66,6 +66,9 @@ class TenderResponse(TenderBase):
     created_at: datetime
     updated_at: datetime
     url: Optional[str] = None  # URL на zakupki.gov.ru для Live Search
+    analysis_risk_level: Optional[str] = None
+    analysis_summary: Optional[str] = None
+    analysis_margin_analysis: Optional[Union[Dict, str, Any]] = None
     
     class Config:
         from_attributes = True

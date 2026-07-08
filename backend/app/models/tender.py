@@ -58,6 +58,28 @@ class Tender(Base):
     def __repr__(self):
         return f"<Tender {self.number}: {self.title[:50]}>"
 
+    @property
+    def latest_analysis(self):
+        if not hasattr(self, "analyses") or not self.analyses:
+            return None
+        # Get the latest analysis by id
+        return sorted(self.analyses, key=lambda a: a.id or 0, reverse=True)[0]
+
+    @property
+    def analysis_risk_level(self):
+        la = self.latest_analysis
+        return la.risk_level if la else None
+
+    @property
+    def analysis_summary(self):
+        la = self.latest_analysis
+        return la.summary if la else None
+
+    @property
+    def analysis_margin_analysis(self):
+        la = self.latest_analysis
+        return la.margin_analysis if la else None
+
 
 
 
