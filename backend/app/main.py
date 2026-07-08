@@ -1,5 +1,5 @@
 """
-Тендерный Хакер - Главный модуль FastAPI приложения
+TenderSystems - Главный модуль FastAPI приложения
 """
 from fastapi import FastAPI, Depends, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         logger.info("Background worker stopped.")
 
 app = FastAPI(
-    title="Тендерный Хакер API",
+    title="TenderSystems API",
     description="AI-ассистент для анализа госзакупок",
     version="1.0.0",
     lifespan=lifespan
@@ -177,7 +177,7 @@ app.include_router(api_router, prefix="/api/v1")
 async def root():
     """Корневой endpoint"""
     return {
-        "message": "Тендерный Хакер API",
+        "message": "TenderSystems API",
         "version": "1.0.0",
         "status": "running"
     }
